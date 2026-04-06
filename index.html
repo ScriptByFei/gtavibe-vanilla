@@ -158,9 +158,6 @@ const ROAD_COLOR = 0x2a2a3a;
 const GROUND_COLOR = 0x1a3a1a;
 const BUILDING_COLORS = [0x4a4a6a, 0x5a5a7a, 0x3a3a5a, 0x6a6a8a, 0x555577];
 
-// ─── MAP DATA ──────────────────────────────────────────────────────────
-const buildings = []; // collision bounds, filled by createMap()
-
 // ─── STATE ────────────────────────────────────────────────────────────────
 const state = {
   cash: 0,
@@ -202,8 +199,6 @@ scene.add(dirLight);
 
 // ─── MAP GENERATION ───────────────────────────────────────────────────────
 function createMap() {
-  const ROAD_W = 6;
-  const SIDEWALK_W = 2;
 
   // Simple flat ground plane
   const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
@@ -212,60 +207,6 @@ function createMap() {
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(WORLD_SIZE / 2, -0.01, WORLD_SIZE / 2);
   scene.add(ground);
-
-  // Buildings with variety
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      const isHorizontalRoad = row % 2 === 0;
-      const isVerticalRoad = col % 2 === 0;
-      if (isHorizontalRoad || isVerticalRoad) continue;
-
-      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const blockW = BLOCK_SIZE - ROAD_W - SIDEWALK_W * 2 - 1;
-      const blockD = BLOCK_SIZE - ROAD_W - SIDEWALK_W * 2 - 1;
-
-      // Varied building heights — zone-based
-      const distFromCenter = Math.abs(col - GRID_SIZE / 2) + Math.abs(row - GRID_SIZE / 2);
-      const maxH = 5 + distFromCenter * 2.5 + Math.random() * 8;
-      const h = 4 + Math.random() * maxH;
-
-      // Building color by zone
-      const zoneR = Math.floor(60 + distFromCenter * 8);
-      const zoneG = Math.floor(50 + Math.random() * 20);
-      const zoneB = Math.floor(80 + distFromCenter * 10);
-      const bColor = (zoneR << 16) | (zoneG << 8) | zoneB;
-
-      const geo = new THREE.BoxGeometry(blockW, h, blockD);
-      const mat = new THREE.MeshLambertMaterial({ color: bColor });
-      const building = new THREE.Mesh(geo, mat);
-      building.position.set(cx, h / 2, cz);
-      scene.add(building);
-      buildings.push({ x: cx, z: cz, hw: blockW / 2, hd: blockD / 2 });
-
-      // Rooftop — darker accent
-      const roofGeo = new THREE.BoxGeometry(blockW * 0.5, 0.4, blockD * 0.5);
-      const roofMat = new THREE.MeshLambertMaterial({ color: 0x666677 });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.set(cx, h + 0.2, cz);
-      scene.add(roof);
-
-      // Windows — warm glow
-      const windowMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.3 ? 0xffeeaa : 0x88ccff });
-      const floors = Math.floor(h / 3);
-      const winsPerFloor = Math.floor(blockW / 2.5);
-      for (let floor = 0; floor < Math.min(floors, 8); floor++) {
-        for (let wIdx = 0; wIdx < winsPerFloor; wIdx++) {
-          const winGeo = new THREE.PlaneGeometry(1.2, 1.4);
-          const win = new THREE.Mesh(winGeo, windowMat);
-          const wx = cx - blockW / 2 + 1.5 + wIdx * (blockW - 2) / winsPerFloor;
-          const wy = floor * 3 + 2;
-          win.position.set(wx, wy, cz + blockD / 2 + 0.01);
-          scene.add(win);
-        }
-      }
-    }
-  }
 }
 
 // ─── PLAYER ───────────────────────────────────────────────────────────────
@@ -501,16 +442,8 @@ function updatePlayer(dt) {
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
     // Building collision — skip if inside building
-    // Building collision
-    let hit = false;
-    for (const b of buildings) {
-      if (nx > b.x - b.hw && nx < b.x + b.hw &&
-          nz > b.z - b.hd && nz < b.z + b.hd) { hit = true; break; }
-    }
-    if (!hit) {
-      playerMesh.position.x = nx;
-      playerMesh.position.z = nz;
-    }
+    playerMesh.position.x = nx;
+    playerMesh.position.z = nz;
   }
 }
 
