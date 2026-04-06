@@ -202,13 +202,20 @@ function createMap() {
   const ROAD_W = 6;
   const SIDEWALK_W = 2;
 
-  // Base ground (grass)
-  const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
-  const groundMat = new THREE.MeshLambertMaterial({ color: GROUND_COLOR });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
-  scene.add(ground);
+  // Base ground — checkerboard pattern
+  const CHECK = 10;
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x1a2a1a });
+  const lightMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
+  for (let x = 0; x < WORLD_SIZE; x += CHECK) {
+    for (let z = 0; z < WORLD_SIZE; z += CHECK) {
+      const geo = new THREE.PlaneGeometry(CHECK, CHECK);
+      const mat = (Math.floor(x / CHECK) + Math.floor(z / CHECK)) % 2 === 0 ? darkMat : lightMat;
+      const tile = new THREE.Mesh(geo, mat);
+      tile.rotation.x = -Math.PI / 2;
+      tile.position.set(x + CHECK / 2, 0, z + CHECK / 2);
+      scene.add(tile);
+    }
+  }
 
   const roadMat = new THREE.MeshLambertMaterial({ color: ROAD_COLOR });
   const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
