@@ -163,7 +163,7 @@ const state = {
   cash: 0,
   health: 100,
   wantedLevel: 0,
-  cameraZoom: 80,
+  cameraZoom: 120,
   playerRot: 0,
   keys: { w: false, a: false, s: false, d: false },
 };
@@ -199,7 +199,10 @@ scene.add(dirLight);
 
 // ─── MAP GENERATION ───────────────────────────────────────────────────────
 function createMap() {
-  // Ground
+  const ROAD_W = 6;
+  const SIDEWALK_W = 2;
+
+  // Base ground (grass)
   const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
   const groundMat = new THREE.MeshLambertMaterial({ color: GROUND_COLOR });
   const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -207,8 +210,10 @@ function createMap() {
   ground.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
   scene.add(ground);
 
-  // Roads
   const roadMat = new THREE.MeshLambertMaterial({ color: ROAD_COLOR });
+  const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
+
+  // Roads and sidewalks
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const isHorizontalRoad = row % 2 === 0;
@@ -218,37 +223,69 @@ function createMap() {
       const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
       const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
 
-      // Road segment
+      // Horizontal road
       if (isHorizontalRoad) {
-        const geo = new THREE.PlaneGeometry(BLOCK_SIZE, 4);
-        const road = new THREE.Mesh(geo, roadMat);
+        const rGeo = new THREE.PlaneGeometry(BLOCK_SIZE, ROAD_W);
+        const road = new THREE.Mesh(rGeo, roadMat);
         road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.01, cz);
+        road.position.set(cx, 0.02, cz);
         scene.add(road);
-      }
-      if (isVerticalRoad) {
-        const geo = new THREE.PlaneGeometry(4, BLOCK_SIZE);
-        const road = new THREE.Mesh(geo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.01, cz);
-        scene.add(road);
-      }
 
-      // Road markings (dashed center line)
-      if (isVerticalRoad) {
-        for (let i = 0; i < 4; i++) {
-          const markGeo = new THREE.PlaneGeometry(0.3, 2);
-          const markMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        // Sidewalks on top and bottom
+        const swGeo = new THREE.PlaneGeometry(BLOCK_SIZE, SIDEWALK_W);
+        const swTop = new THREE.Mesh(swGeo, sidewalkMat);
+        swTop.rotation.x = -Math.PI / 2;
+        swTop.position.set(cx, 0.03, cz - (ROAD_W / 2 + SIDEWALK_W / 2));
+        scene.add(swTop);
+        const swBot = new THREE.Mesh(swGeo, sidewalkMat);
+        swBot.rotation.x = -Math.PI / 2;
+        swBot.position.set(cx, 0.03, cz + (ROAD_W / 2 + SIDEWALK_W / 2));
+        scene.add(swBot);
+
+        // Center line dashes
+        for (let i = 0; i < 6; i++) {
+          const markGeo = new THREE.PlaneGeometry(0.3, 2.5);
+          const markMat = new THREE.MeshBasicMaterial({ color: 0xeeee00 });
           const mark = new THREE.Mesh(markGeo, markMat);
           mark.rotation.x = -Math.PI / 2;
-          mark.position.set(cx, 0.02, cz - BLOCK_SIZE / 2 + 2.5 + i * 5);
+          mark.position.set(cx - BLOCK_SIZE / 2 + 5 + i * 7, 0.04, cz);
+          scene.add(mark);
+        }
+      }
+
+      // Vertical road
+      if (isVerticalRoad) {
+        const rGeo = new THREE.PlaneGeometry(ROAD_W, BLOCK_SIZE);
+        const road = new THREE.Mesh(rGeo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.set(cx, 0.02, cz);
+        scene.add(road);
+
+        // Sidewalks on left and right
+        const swGeo = new THREE.PlaneGeometry(SIDEWALK_W, BLOCK_SIZE);
+        const swLeft = new THREE.Mesh(swGeo, sidewalkMat);
+        swLeft.rotation.x = -Math.PI / 2;
+        swLeft.position.set(cx - (ROAD_W / 2 + SIDEWALK_W / 2), 0.03, cz);
+        scene.add(swLeft);
+        const swRight = new THREE.Mesh(swGeo, sidewalkMat);
+        swRight.rotation.x = -Math.PI / 2;
+        swRight.position.set(cx + (ROAD_W / 2 + SIDEWALK_W / 2), 0.03, cz);
+        scene.add(swRight);
+
+        // Center line dashes
+        for (let i = 0; i < 6; i++) {
+          const markGeo = new THREE.PlaneGeometry(2.5, 0.3);
+          const markMat = new THREE.MeshBasicMaterial({ color: 0xeeee00 });
+          const mark = new THREE.Mesh(markGeo, markMat);
+          mark.rotation.x = -Math.PI / 2;
+          mark.position.set(cx, 0.04, cz - BLOCK_SIZE / 2 + 5 + i * 7);
           scene.add(mark);
         }
       }
     }
   }
 
-  // Buildings
+  // Buildings with variety
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const isHorizontalRoad = row % 2 === 0;
@@ -257,36 +294,44 @@ function createMap() {
 
       const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
       const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const w = BLOCK_SIZE - 2;
-      const d = BLOCK_SIZE - 2;
-      const h = 3 + Math.random() * 18;
+      const blockW = BLOCK_SIZE - ROAD_W - SIDEWALK_W * 2 - 1;
+      const blockD = BLOCK_SIZE - ROAD_W - SIDEWALK_W * 2 - 1;
 
-      const colorIdx = Math.floor(Math.random() * BUILDING_COLORS.length);
-      const geo = new THREE.BoxGeometry(w, h, d);
-      const mat = new THREE.MeshLambertMaterial({ color: BUILDING_COLORS[colorIdx] });
+      // Varied building heights — zone-based
+      const distFromCenter = Math.abs(col - GRID_SIZE / 2) + Math.abs(row - GRID_SIZE / 2);
+      const maxH = 5 + distFromCenter * 2.5 + Math.random() * 8;
+      const h = 4 + Math.random() * maxH;
+
+      // Building color by zone
+      const zoneR = Math.floor(60 + distFromCenter * 8);
+      const zoneG = Math.floor(50 + Math.random() * 20);
+      const zoneB = Math.floor(80 + distFromCenter * 10);
+      const bColor = (zoneR << 16) | (zoneG << 8) | zoneB;
+
+      const geo = new THREE.BoxGeometry(blockW, h, blockD);
+      const mat = new THREE.MeshLambertMaterial({ color: bColor });
       const building = new THREE.Mesh(geo, mat);
       building.position.set(cx, h / 2, cz);
       scene.add(building);
 
-      // Rooftop accent
-      const roofGeo = new THREE.BoxGeometry(w * 0.6, 0.5, d * 0.6);
-      const roofMat = new THREE.MeshLambertMaterial({ color: 0x888899 });
+      // Rooftop — darker accent
+      const roofGeo = new THREE.BoxGeometry(blockW * 0.5, 0.4, blockD * 0.5);
+      const roofMat = new THREE.MeshLambertMaterial({ color: 0x666677 });
       const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.set(cx, h + 0.25, cz);
+      roof.position.set(cx, h + 0.2, cz);
       scene.add(roof);
 
-      // Windows (small emissive squares on building sides)
-      const windowMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa });
-      const winPerFloor = 3;
+      // Windows — warm glow
+      const windowMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.3 ? 0xffeeaa : 0x88ccff });
       const floors = Math.floor(h / 3);
-      for (let floor = 0; floor < floors; floor++) {
-        for (let wIdx = 0; wIdx < winPerFloor; wIdx++) {
-          // Front face
-          const winGeo = new THREE.PlaneGeometry(1, 1.5);
+      const winsPerFloor = Math.floor(blockW / 2.5);
+      for (let floor = 0; floor < Math.min(floors, 8); floor++) {
+        for (let wIdx = 0; wIdx < winsPerFloor; wIdx++) {
+          const winGeo = new THREE.PlaneGeometry(1.2, 1.4);
           const win = new THREE.Mesh(winGeo, windowMat);
-          const wx = cx - w / 2 + (w / (winPerFloor + 1)) * (wIdx + 1);
+          const wx = cx - blockW / 2 + 1.5 + wIdx * (blockW - 2) / winsPerFloor;
           const wy = floor * 3 + 2;
-          win.position.set(wx, wy, cz + d / 2 + 0.01);
+          win.position.set(wx, wy, cz + blockD / 2 + 0.01);
           scene.add(win);
         }
       }
