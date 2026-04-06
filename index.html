@@ -151,7 +151,7 @@
 import * as THREE from 'three';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-const GRID_SIZE = 5;
+const GRID_SIZE = 12;
 const BLOCK_SIZE = 20;
 const WORLD_SIZE = GRID_SIZE * BLOCK_SIZE;
 const ROAD_COLOR = 0x2a2a3a;
@@ -259,7 +259,7 @@ function createMap() {
       const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
       const w = BLOCK_SIZE - 2;
       const d = BLOCK_SIZE - 2;
-      const h = 4 + Math.random() * 12;
+      const h = 3 + Math.random() * 18;
 
       const colorIdx = Math.floor(Math.random() * BUILDING_COLORS.length);
       const geo = new THREE.BoxGeometry(w, h, d);
@@ -343,6 +343,8 @@ const npcs = [];
 function createNPCs() {
   const positions = [
     [30, 30], [70, 30], [30, 70], [90, 50], [50, 90],
+    [110, 30], [150, 30], [110, 70], [150, 110], [110, 150],
+    [190, 50], [190, 110], [190, 190], [110, 190], [50, 110],
   ];
 
   const npcColors = [0x228822, 0x882288, 0x228888, 0x884422, 0x442288];
