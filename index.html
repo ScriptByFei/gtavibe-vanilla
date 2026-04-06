@@ -211,6 +211,7 @@ function createMap() {
   scene.add(ground);
 
   // Buildings with variety
+  const buildings = [];
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const isHorizontalRoad = row % 2 === 0;
@@ -238,6 +239,7 @@ function createMap() {
       const building = new THREE.Mesh(geo, mat);
       building.position.set(cx, h / 2, cz);
       scene.add(building);
+      buildings.push({ x: cx, z: cz, hw: blockW / 2, hd: blockD / 2 });
 
       // Rooftop — darker accent
       const roofGeo = new THREE.BoxGeometry(blockW * 0.5, 0.4, blockD * 0.5);
@@ -496,8 +498,21 @@ function updatePlayer(dt) {
     nx = Math.max(1, Math.min(WORLD_SIZE - 1, nx));
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
-    playerMesh.position.x = nx;
-    playerMesh.position.z = nz;
+    // Building collision
+    const PLAYER_R = 0.8;
+    let blocked = false;
+    for (const b of buildings) {
+      if (nx > b.x - b.hw - PLAYER_R && nx < b.x + b.hw + PLAYER_R &&
+          nz > b.z - b.hd - PLAYER_R && nz < b.z + b.hd + PLAYER_R) {
+        blocked = true;
+        break;
+      }
+    }
+
+    if (!blocked) {
+      playerMesh.position.x = nx;
+      playerMesh.position.z = nz;
+    }
   }
 }
 
