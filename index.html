@@ -202,25 +202,46 @@ function createMap() {
   const ROAD_W = 6;
   const SIDEWALK_W = 2;
 
-  // Base ground — checkerboard pattern
+  // Entire ground — checkerboard pattern, no separate road planes
   const CHECK = 10;
-  const darkMat = new THREE.MeshLambertMaterial({ color: 0x1a2a1a });
-  const lightMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
+  const darkGrassMat = new THREE.MeshLambertMaterial({ color: 0x1a2a1a });
+  const lightGrassMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
+  const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
   for (let x = 0; x < WORLD_SIZE; x += CHECK) {
     for (let z = 0; z < WORLD_SIZE; z += CHECK) {
       const geo = new THREE.PlaneGeometry(CHECK, CHECK);
-      const mat = (Math.floor(x / CHECK) + Math.floor(z / CHECK)) % 2 === 0 ? darkMat : lightMat;
+      const cx = x + CHECK / 2;
+      const cz = z + CHECK / 2;
+      const col = Math.floor(cx / BLOCK_SIZE);
+      const row = Math.floor(cz / BLOCK_SIZE);
+      const isHRoad = row % 2 === 0;
+      const isVRoad = col % 2 === 0;
+      const isSidewalk = !isHRoad && !isVRoad && (
+        (Math.floor((cx % BLOCK_SIZE) / BLOCK_SIZE * 4) === 0) ||
+        (Math.floor((cx % BLOCK_SIZE) / BLOCK_SIZE * 4) === 3) ||
+        (Math.floor((cz % BLOCK_SIZE) / BLOCK_SIZE * 4) === 0) ||
+        (Math.floor((cz % BLOCK_SIZE) / BLOCK_SIZE * 4) === 3)
+      );
+      const isRoad = isHRoad || isVRoad;
+      const isGrass = !isRoad && !isSidewalk;
+      const checker = (Math.floor(x / CHECK) + Math.floor(z / CHECK)) % 2 === 0;
+      let mat = roadMat;
+      if (isRoad) mat = roadMat;
+      else if (isSidewalk) mat = sidewalkMat;
+      else mat = checker ? darkGrassMat : lightGrassMat;
       const tile = new THREE.Mesh(geo, mat);
       tile.rotation.x = -Math.PI / 2;
-      tile.position.set(x + CHECK / 2, 0, z + CHECK / 2);
+      tile.position.set(cx, 0, cz);
       scene.add(tile);
     }
   }
 
-  const roadMat = new THREE.MeshLambertMaterial({ color: ROAD_COLOR });
+  // Roads and sidewalks (now integrated into checkerboard below)
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
   const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
 
-  // Roads and sidewalks
+  // Roads and sidewalks — REMOVED, now part of checkerboard
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const isHorizontalRoad = row % 2 === 0;
@@ -230,69 +251,8 @@ function createMap() {
       const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
       const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
 
-      // Horizontal road
-      if (isHorizontalRoad) {
-        const rGeo = new THREE.PlaneGeometry(BLOCK_SIZE, ROAD_W);
-        const road = new THREE.Mesh(rGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.02, cz);
-        scene.add(road);
-
-        // Sidewalks on top and bottom
-        const swGeo = new THREE.PlaneGeometry(BLOCK_SIZE, SIDEWALK_W);
-        const swTop = new THREE.Mesh(swGeo, sidewalkMat);
-        swTop.rotation.x = -Math.PI / 2;
-        swTop.position.set(cx, 0.03, cz - (ROAD_W / 2 + SIDEWALK_W / 2));
-        scene.add(swTop);
-        const swBot = new THREE.Mesh(swGeo, sidewalkMat);
-        swBot.rotation.x = -Math.PI / 2;
-        swBot.position.set(cx, 0.03, cz + (ROAD_W / 2 + SIDEWALK_W / 2));
-        scene.add(swBot);
-
-        // White edge lines on road sides
-        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const edgeGeoH = new THREE.PlaneGeometry(BLOCK_SIZE, 0.3);
-        const edgeTop = new THREE.Mesh(edgeGeoH, edgeMat);
-        edgeTop.rotation.x = -Math.PI / 2;
-        edgeTop.position.set(cx, 0.035, cz - ROAD_W / 2 + 0.15);
-        scene.add(edgeTop);
-        const edgeBot = new THREE.Mesh(edgeGeoH, edgeMat);
-        edgeBot.rotation.x = -Math.PI / 2;
-        edgeBot.position.set(cx, 0.035, cz + ROAD_W / 2 - 0.15);
-        scene.add(edgeBot);
-      }
-
-      // Vertical road
-      if (isVerticalRoad) {
-        const rGeo = new THREE.PlaneGeometry(ROAD_W, BLOCK_SIZE);
-        const road = new THREE.Mesh(rGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.02, cz);
-        scene.add(road);
-
-        // Sidewalks on left and right
-        const swGeo = new THREE.PlaneGeometry(SIDEWALK_W, BLOCK_SIZE);
-        const swLeft = new THREE.Mesh(swGeo, sidewalkMat);
-        swLeft.rotation.x = -Math.PI / 2;
-        swLeft.position.set(cx - (ROAD_W / 2 + SIDEWALK_W / 2), 0.03, cz);
-        scene.add(swLeft);
-        const swRight = new THREE.Mesh(swGeo, sidewalkMat);
-        swRight.rotation.x = -Math.PI / 2;
-        swRight.position.set(cx + (ROAD_W / 2 + SIDEWALK_W / 2), 0.03, cz);
-        scene.add(swRight);
-
-        // White edge lines on road sides
-        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const edgeGeoV = new THREE.PlaneGeometry(0.3, BLOCK_SIZE);
-        const edgeLeft = new THREE.Mesh(edgeGeoV, edgeMat);
-        edgeLeft.rotation.x = -Math.PI / 2;
-        edgeLeft.position.set(cx - ROAD_W / 2 + 0.15, 0.035, cz);
-        scene.add(edgeLeft);
-        const edgeRight = new THREE.Mesh(edgeGeoV, edgeMat);
-        edgeRight.rotation.x = -Math.PI / 2;
-        edgeRight.position.set(cx + ROAD_W / 2 - 0.15, 0.035, cz);
-        scene.add(edgeRight);
-      }
+      // Horizontal and vertical road/sidewalk geometry — integrated into checkerboard
+      // Keeping structure but no separate planes
     }
   }
 
