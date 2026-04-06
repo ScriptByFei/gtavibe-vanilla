@@ -189,6 +189,7 @@ const state = {
   bullets: [],
   lastShot: 0,
   reloading: false,
+  shooting: false,
   reloadTimer: 0,
 };
 
@@ -375,8 +376,10 @@ document.addEventListener('keyup', (e) => {
 // Shoot on click / tap
 document.addEventListener('pointerdown', (e) => {
   if (e.target.tagName === 'BUTTON') return;
+  state.shooting = true;
   shoot();
 });
+document.addEventListener('pointerup', () => { state.shooting = false; });
 
 // Touch joystick
 const joystickZone = document.getElementById('joystick-zone');
@@ -618,6 +621,8 @@ function animate() {
       else state.shotgunAmmo = 6;
     }
   }
+
+  if (state.shooting) shoot();
 
   updatePlayer(dt);
   updateNPCs(dt);
