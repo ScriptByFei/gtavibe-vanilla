@@ -498,8 +498,17 @@ function updatePlayer(dt) {
     nx = Math.max(1, Math.min(WORLD_SIZE - 1, nx));
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
-    playerMesh.position.x = nx;
-    playerMesh.position.z = nz;
+    // Building collision — skip if inside building
+    let collides = false;
+    for (const b of buildings) {
+      const insideX = nx > b.x - b.hw && nx < b.x + b.hw;
+      const insideZ = nz > b.z - b.hd && nz < b.z + b.hd;
+      if (insideX && insideZ) { collides = true; break; }
+    }
+    if (!collides) {
+      playerMesh.position.x = nx;
+      playerMesh.position.z = nz;
+    }
   }
 }
 
