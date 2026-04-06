@@ -345,37 +345,37 @@ function createPlayer() {
   const group = new THREE.Group();
 
   // Legs
-  const legGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
+  const legGeo = new THREE.BoxGeometry(0.6, 1.6, 0.6);
   const legMat = new THREE.MeshLambertMaterial({ color: 0x2244aa });
   const leftLeg = new THREE.Mesh(legGeo, legMat);
-  leftLeg.position.set(-0.2, 0.4, 0);
+  leftLeg.position.set(-0.35, 0.8, 0);
   group.add(leftLeg);
   const rightLeg = new THREE.Mesh(legGeo, legMat);
-  rightLeg.position.set(0.2, 0.4, 0);
+  rightLeg.position.set(0.35, 0.8, 0);
   group.add(rightLeg);
 
   // Torso
-  const torsoGeo = new THREE.BoxGeometry(0.7, 0.8, 0.4);
+  const torsoGeo = new THREE.BoxGeometry(1.4, 1.6, 0.8);
   const torsoMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
   const torso = new THREE.Mesh(torsoGeo, torsoMat);
-  torso.position.y = 1.2;
+  torso.position.y = 2.4;
   group.add(torso);
 
   // Head
-  const headGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
+  const headGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
   const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
   const head = new THREE.Mesh(headGeo, headMat);
-  head.position.y = 1.82;
+  head.position.y = 3.64;
   group.add(head);
 
   // Arms
-  const armGeo = new THREE.BoxGeometry(0.25, 0.7, 0.25);
+  const armGeo = new THREE.BoxGeometry(0.5, 1.4, 0.5);
   const armMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
   const leftArm = new THREE.Mesh(armGeo, armMat);
-  leftArm.position.set(-0.5, 1.1, 0);
+  leftArm.position.set(-0.95, 2.2, 0);
   group.add(leftArm);
   const rightArm = new THREE.Mesh(armGeo, armMat);
-  rightArm.position.set(0.5, 1.1, 0);
+  rightArm.position.set(0.95, 2.2, 0);
   group.add(rightArm);
 
   group.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
