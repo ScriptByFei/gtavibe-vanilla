@@ -158,6 +158,9 @@ const ROAD_COLOR = 0x2a2a3a;
 const GROUND_COLOR = 0x1a3a1a;
 const BUILDING_COLORS = [0x4a4a6a, 0x5a5a7a, 0x3a3a5a, 0x6a6a8a, 0x555577];
 
+// ─── MAP DATA ──────────────────────────────────────────────────────────
+const buildings = []; // collision bounds, filled by createMap()
+
 // ─── STATE ────────────────────────────────────────────────────────────────
 const state = {
   cash: 0,
@@ -211,7 +214,6 @@ function createMap() {
   scene.add(ground);
 
   // Buildings with variety
-  const buildings = [];
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const isHorizontalRoad = row % 2 === 0;
@@ -499,8 +501,16 @@ function updatePlayer(dt) {
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
     // Building collision — skip if inside building
-    playerMesh.position.x = nx;
-    playerMesh.position.z = nz;
+    // Building collision
+    let hit = false;
+    for (const b of buildings) {
+      if (nx > b.x - b.hw && nx < b.x + b.hw &&
+          nz > b.z - b.hd && nz < b.z + b.hd) { hit = true; break; }
+    }
+    if (!hit) {
+      playerMesh.position.x = nx;
+      playerMesh.position.z = nz;
+    }
   }
 }
 
