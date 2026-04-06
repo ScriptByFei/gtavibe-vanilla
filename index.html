@@ -242,15 +242,17 @@ function createMap() {
         swBot.position.set(cx, 0.03, cz + (ROAD_W / 2 + SIDEWALK_W / 2));
         scene.add(swBot);
 
-        // Center line dashes
-        for (let i = 0; i < 6; i++) {
-          const markGeo = new THREE.PlaneGeometry(0.3, 2.5);
-          const markMat = new THREE.MeshBasicMaterial({ color: 0xeeee00 });
-          const mark = new THREE.Mesh(markGeo, markMat);
-          mark.rotation.x = -Math.PI / 2;
-          mark.position.set(cx - BLOCK_SIZE / 2 + 5 + i * 7, 0.04, cz);
-          scene.add(mark);
-        }
+        // White edge lines on road sides
+        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const edgeGeoH = new THREE.PlaneGeometry(BLOCK_SIZE, 0.3);
+        const edgeTop = new THREE.Mesh(edgeGeoH, edgeMat);
+        edgeTop.rotation.x = -Math.PI / 2;
+        edgeTop.position.set(cx, 0.035, cz - ROAD_W / 2 + 0.15);
+        scene.add(edgeTop);
+        const edgeBot = new THREE.Mesh(edgeGeoH, edgeMat);
+        edgeBot.rotation.x = -Math.PI / 2;
+        edgeBot.position.set(cx, 0.035, cz + ROAD_W / 2 - 0.15);
+        scene.add(edgeBot);
       }
 
       // Vertical road
@@ -272,15 +274,17 @@ function createMap() {
         swRight.position.set(cx + (ROAD_W / 2 + SIDEWALK_W / 2), 0.03, cz);
         scene.add(swRight);
 
-        // Center line dashes
-        for (let i = 0; i < 6; i++) {
-          const markGeo = new THREE.PlaneGeometry(2.5, 0.3);
-          const markMat = new THREE.MeshBasicMaterial({ color: 0xeeee00 });
-          const mark = new THREE.Mesh(markGeo, markMat);
-          mark.rotation.x = -Math.PI / 2;
-          mark.position.set(cx, 0.04, cz - BLOCK_SIZE / 2 + 5 + i * 7);
-          scene.add(mark);
-        }
+        // White edge lines on road sides
+        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const edgeGeoV = new THREE.PlaneGeometry(0.3, BLOCK_SIZE);
+        const edgeLeft = new THREE.Mesh(edgeGeoV, edgeMat);
+        edgeLeft.rotation.x = -Math.PI / 2;
+        edgeLeft.position.set(cx - ROAD_W / 2 + 0.15, 0.035, cz);
+        scene.add(edgeLeft);
+        const edgeRight = new THREE.Mesh(edgeGeoV, edgeMat);
+        edgeRight.rotation.x = -Math.PI / 2;
+        edgeRight.position.set(cx + ROAD_W / 2 - 0.15, 0.035, cz);
+        scene.add(edgeRight);
       }
     }
   }
