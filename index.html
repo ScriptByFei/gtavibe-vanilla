@@ -305,7 +305,7 @@ function createPlayer() {
   rightArm.position.set(0.95, 2.2, 0);
   group.add(rightArm);
 
-  group.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
+  group.position.set(10, 0, 10); // guaranteed road
   scene.add(group);
   playerMesh = group;
 }
@@ -499,20 +499,14 @@ function updatePlayer(dt) {
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
     // Building collision
-    const PLAYER_R = 0.8;
-    let blocked = false;
     for (const b of buildings) {
-      if (nx > b.x - b.hw - PLAYER_R && nx < b.x + b.hw + PLAYER_R &&
-          nz > b.z - b.hd - PLAYER_R && nz < b.z + b.hd + PLAYER_R) {
-        blocked = true;
-        break;
+      if (nx > b.x - b.hw && nx < b.x + b.hw &&
+          nz > b.z - b.hd && nz < b.z + b.hd) {
+        return; // blocked
       }
     }
-
-    if (!blocked) {
-      playerMesh.position.x = nx;
-      playerMesh.position.z = nz;
-    }
+    playerMesh.position.x = nx;
+    playerMesh.position.z = nz;
   }
 }
 
