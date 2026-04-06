@@ -498,13 +498,6 @@ function updatePlayer(dt) {
     nx = Math.max(1, Math.min(WORLD_SIZE - 1, nx));
     nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
 
-    // Building collision
-    for (const b of buildings) {
-      if (nx > b.x - b.hw && nx < b.x + b.hw &&
-          nz > b.z - b.hd && nz < b.z + b.hd) {
-        return; // blocked
-      }
-    }
     playerMesh.position.x = nx;
     playerMesh.position.z = nz;
   }
