@@ -202,59 +202,13 @@ function createMap() {
   const ROAD_W = 6;
   const SIDEWALK_W = 2;
 
-  // Entire ground — checkerboard pattern, no separate road planes
-  const CHECK = 10;
-  const darkGrassMat = new THREE.MeshLambertMaterial({ color: 0x1a2a1a });
-  const lightGrassMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
-  const roadMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
-  const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
-  for (let x = 0; x < WORLD_SIZE; x += CHECK) {
-    for (let z = 0; z < WORLD_SIZE; z += CHECK) {
-      const geo = new THREE.PlaneGeometry(CHECK, CHECK);
-      const cx = x + CHECK / 2;
-      const cz = z + CHECK / 2;
-      const col = Math.floor(cx / BLOCK_SIZE);
-      const row = Math.floor(cz / BLOCK_SIZE);
-      const isHRoad = row % 2 === 0;
-      const isVRoad = col % 2 === 0;
-      const isSidewalk = !isHRoad && !isVRoad && (
-        (Math.floor((cx % BLOCK_SIZE) / BLOCK_SIZE * 4) === 0) ||
-        (Math.floor((cx % BLOCK_SIZE) / BLOCK_SIZE * 4) === 3) ||
-        (Math.floor((cz % BLOCK_SIZE) / BLOCK_SIZE * 4) === 0) ||
-        (Math.floor((cz % BLOCK_SIZE) / BLOCK_SIZE * 4) === 3)
-      );
-      const isRoad = isHRoad || isVRoad;
-      const isGrass = !isRoad && !isSidewalk;
-      const checker = (Math.floor(x / CHECK) + Math.floor(z / CHECK)) % 2 === 0;
-      let mat = roadMat;
-      if (isRoad) mat = roadMat;
-      else if (isSidewalk) mat = sidewalkMat;
-      else mat = checker ? darkGrassMat : lightGrassMat;
-      const tile = new THREE.Mesh(geo, mat);
-      tile.rotation.x = -Math.PI / 2;
-      tile.position.set(cx, 0, cz);
-      scene.add(tile);
-    }
-  }
-
-  // Roads and sidewalks (now integrated into checkerboard below)
-  const roadMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
-  const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0x4a4a5a });
-
-  // Roads and sidewalks — REMOVED, now part of checkerboard
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      const isHorizontalRoad = row % 2 === 0;
-      const isVerticalRoad = col % 2 === 0;
-      if (!isHorizontalRoad && !isVerticalRoad) continue;
-
-      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
-
-      // Horizontal and vertical road/sidewalk geometry — integrated into checkerboard
-      // Keeping structure but no separate planes
-    }
-  }
+  // Simple flat ground plane
+  const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(WORLD_SIZE / 2, -0.01, WORLD_SIZE / 2);
+  scene.add(ground);
 
   // Buildings with variety
   for (let row = 0; row < GRID_SIZE; row++) {
