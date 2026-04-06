@@ -121,14 +121,25 @@
 <body>
 
 <div id="hud">
-  <div>SCORE: <span id="hud-cash">0</span></div>
-  <div>HEALTH: <span id="hud-health">100</span></div>
-  <div>WANTED: <span id="hud-wanted">0</span></div>
+  <div>SCORE: <span id="hud-score">0</span></div>
+  <div>WAVE: <span id="hud-wave">1</span> &nbsp; KILLS: <span id="hud-kills">0</span></div>
+  <div>
+    HP: <span id="hud-health">100</span>
+    <div id="health-bar-bg" style="display:inline-block;width:100px;height:10px;background:rgba(255,255,255,0.2);border-radius:5px;vertical-align:middle;margin-left:6px"><div id="health-bar" style="height:100%;width:100%;background:#4caf50;border-radius:5px"></div></div>
+  </div>
+  <div id="hud-ammo">PISTOL | <span id="hud-ammo-count">12</span> | <span id="hud-weapon">PISTOL</span></div>
+  <div id="hud-reload" style="color:#ff0;font-size:12px;display:none">RELOADING...</div>
 </div>
 
 <div id="zoom-controls">
   <button class="zoom-btn" id="zoom-in">+</button>
   <button class="zoom-btn" id="zoom-out">−</button>
+</div>
+
+<div id="weapon-controls" style="position:absolute;bottom:160px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:10">
+  <button class="zoom-btn" id="btn-pistol" style="width:60px;font-size:11px">1 PISTOL</button>
+  <button class="zoom-btn" id="btn-shotgun" style="width:60px;font-size:11px">2 SG</button>
+  <button class="zoom-btn" id="btn-reload" style="width:60px;font-size:11px;margin-top:8px">R REL</button>
 </div>
 
 <div id="joystick-zone">
@@ -166,6 +177,19 @@ const state = {
   cameraZoom: 50,
   playerRot: 0,
   keys: { w: false, a: false, s: false, d: false },
+  // Combat
+  weapon: 'pistol',
+  pistolAmmo: 12,
+  shotgunAmmo: 6,
+  score: 0,
+  wave: 1,
+  waveKills: 0,
+  waveKillsNeeded: 5,
+  zombies: [],
+  bullets: [],
+  lastShot: 0,
+  reloading: false,
+  reloadTimer: 0,
 };
 
 // ─── SCENE SETUP ──────────────────────────────────────────────────────────
@@ -335,6 +359,9 @@ document.addEventListener('keydown', (e) => {
   if (k === 'a' || k === 'arrowleft') state.keys.a = true;
   if (k === 's' || k === 'arrowdown') state.keys.s = true;
   if (k === 'd' || k === 'arrowright') state.keys.d = true;
+  if (k === '1') switchWeapon('pistol');
+  if (k === '2') switchWeapon('shotgun');
+  if (k === 'r') reload();
 });
 
 document.addEventListener('keyup', (e) => {
@@ -343,6 +370,12 @@ document.addEventListener('keyup', (e) => {
   if (k === 'a' || k === 'arrowleft') state.keys.a = false;
   if (k === 's' || k === 'arrowdown') state.keys.s = false;
   if (k === 'd' || k === 'arrowright') state.keys.d = false;
+});
+
+// Shoot on click / tap
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.tagName === 'BUTTON') return;
+  shoot();
 });
 
 // Touch joystick
@@ -396,6 +429,9 @@ document.getElementById('zoom-in').addEventListener('click', () => {
 document.getElementById('zoom-out').addEventListener('click', () => {
   state.cameraZoom = Math.min(150, state.cameraZoom + 15);
 });
+document.getElementById('btn-pistol').addEventListener('click', () => switchWeapon('pistol'));
+document.getElementById('btn-shotgun').addEventListener('click', () => switchWeapon('shotgun'));
+document.getElementById('btn-reload').addEventListener('click', () => reload());
 
 // Mouse wheel zoom
 window.addEventListener('wheel', (e) => {
@@ -416,9 +452,86 @@ window.addEventListener('resize', () => {
 
 // ─── HUD ──────────────────────────────────────────────────────────────────
 function updateHUD() {
-  document.getElementById('hud-cash').textContent = state.cash;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-wave').textContent = state.wave;
+  document.getElementById('hud-kills').textContent = state.waveKills;
   document.getElementById('hud-health').textContent = state.health;
-  document.getElementById('hud-wanted').textContent = '★'.repeat(state.wantedLevel);
+  document.getElementById('health-bar').style.width = state.health + '%';
+  document.getElementById('health-bar').style.background = state.health > 50 ? '#4caf50' : state.health > 25 ? '#ff9800' : '#f44336';
+  const ammo = state.weapon === 'pistol' ? state.pistolAmmo : state.shotgunAmmo;
+  document.getElementById('hud-ammo-count').textContent = ammo;
+  document.getElementById('hud-weapon').textContent = state.weapon.toUpperCase();
+  document.getElementById('hud-reload').style.display = state.reloading ? 'block' : 'none';
+  // Weapon button highlight
+  document.getElementById('btn-pistol').style.borderColor = state.weapon === 'pistol' ? '#ff0' : 'rgba(255,255,255,0.3)';
+  document.getElementById('btn-shotgun').style.borderColor = state.weapon === 'shotgun' ? '#ff0' : 'rgba(255,255,255,0.3)';
+}
+
+// ─── SHOOTING ────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+
+function switchWeapon(w) {
+  if (state.reloading) return;
+  state.weapon = w;
+}
+
+function reload() {
+  if (state.reloading) return;
+  const needed = state.weapon === 'pistol' ? 12 : 6;
+  const current = state.weapon === 'pistol' ? state.pistolAmmo : state.shotgunAmmo;
+  if (current >= needed) return;
+  state.reloading = true;
+  state.reloadTimer = state.weapon === 'pistol' ? 1.2 : 2.0;
+}
+
+function shoot() {
+  const now = performance.now();
+  const weapon = state.weapon;
+  const fireRate = weapon === 'pistol' ? 300 : 800;
+  if (now - state.lastShot < fireRate) return;
+  if (state.reloading) return;
+
+  if (weapon === 'pistol') {
+    if (state.pistolAmmo <= 0) { reload(); return; }
+    state.pistolAmmo--;
+    state.lastShot = now;
+    createBullet(0.4, 40);
+  } else {
+    if (state.shotgunAmmo <= 0) { reload(); return; }
+    state.shotgunAmmo--;
+    state.lastShot = now;
+    // Shotgun spread
+    for (let i = -2; i <= 2; i++) {
+      createBullet(0.5, 25, i * 0.08);
+    }
+  }
+}
+
+function createBullet(speed, damage, angleOffset = 0) {
+  if (!playerMesh) return;
+  const angle = playerMesh.rotation.y + angleOffset;
+  const bx = playerMesh.position.x + Math.sin(angle) * 1.5;
+  const bz = playerMesh.position.z + Math.cos(angle) * 1.5;
+  const geo = new THREE.BoxGeometry(0.15, 0.15, 0.6);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const bullet = new THREE.Mesh(geo, mat);
+  bullet.position.set(bx, 1.5, bz);
+  bullet.rotation.y = angle;
+  scene.add(bullet);
+  state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * speed, vz: Math.cos(angle) * speed, damage, life: 1.5 });
+}
+
+function updateBullets(dt) {
+  for (let i = state.bullets.length - 1; i >= 0; i--) {
+    const b = state.bullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.life -= dt;
+    if (b.life <= 0) {
+      scene.remove(b.mesh);
+      state.bullets.splice(i, 1);
+    }
+  }
 }
 
 // ─── GAME LOOP ────────────────────────────────────────────────────────────
@@ -496,8 +609,19 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
 
+  // Reload
+  if (state.reloading) {
+    state.reloadTimer -= dt;
+    if (state.reloadTimer <= 0) {
+      state.reloading = false;
+      if (state.weapon === 'pistol') state.pistolAmmo = 12;
+      else state.shotgunAmmo = 6;
+    }
+  }
+
   updatePlayer(dt);
   updateNPCs(dt);
+  updateBullets(dt);
   updateCamera();
   updateHUD();
 
