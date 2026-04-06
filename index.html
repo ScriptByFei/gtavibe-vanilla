@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>GTAVIBE</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
+    canvas { display: block; }
+
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      text-shadow: 1px 1px 2px #000;
+      pointer-events: none;
+      line-height: 1.6;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .ctrl-btn:active { background: rgba(255,255,255,0.35); }
+
+    #joystick-zone {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 120px;
+      height: 120px;
+      z-index: 10;
+    }
+
+    #joystick-base {
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    #joystick-thumb {
+      width: 50px;
+      height: 50px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: none;
+    }
+
+    #zoom-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-btn:active { background: rgba(255,255,255,0.35); }
+
+    #error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff6b6b;
+      font-family: monospace;
+      font-size: 16px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="hud">
+  <div>SCORE: <span id="hud-cash">0</span></div>
+  <div>HEALTH: <span id="hud-health">100</span></div>
+  <div>WANTED: <span id="hud-wanted">0</span></div>
+</div>
+
+<div id="zoom-controls">
+  <button class="zoom-btn" id="zoom-in">+</button>
+  <button class="zoom-btn" id="zoom-out">−</button>
+</div>
+
+<div id="joystick-zone">
+  <div id="joystick-base">
+    <div id="joystick-thumb"></div>
+  </div>
+</div>
+
+<div id="error"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const GRID_SIZE = 5;
+const BLOCK_SIZE = 20;
+const WORLD_SIZE = GRID_SIZE * BLOCK_SIZE;
+const ROAD_COLOR = 0x2a2a3a;
+const GROUND_COLOR = 0x1a3a1a;
+const BUILDING_COLORS = [0x4a4a6a, 0x5a5a7a, 0x3a3a5a, 0x6a6a8a, 0x555577];
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+const state = {
+  cash: 0,
+  health: 100,
+  wantedLevel: 0,
+  cameraZoom: 80,
+  playerRot: 0,
+  keys: { w: false, a: false, s: false, d: false },
+};
+
+// ─── SCENE SETUP ──────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 80, 200);
+
+const frustumSize = state.cameraZoom;
+const aspect = window.innerWidth / window.innerHeight;
+const camera = new THREE.OrthographicCamera(
+  -frustumSize * aspect / 2,
+  frustumSize * aspect / 2,
+  frustumSize / 2,
+  -frustumSize / 2,
+  0.1,
+  500
+);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = false;
+document.body.appendChild(renderer.domElement);
+
+// ─── LIGHTING ─────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(50, 50, 25);
+scene.add(dirLight);
+
+// ─── MAP GENERATION ───────────────────────────────────────────────────────
+function createMap() {
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
+  const groundMat = new THREE.MeshLambertMaterial({ color: GROUND_COLOR });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
+  scene.add(ground);
+
+  // Roads
+  const roadMat = new THREE.MeshLambertMaterial({ color: ROAD_COLOR });
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      const isHorizontalRoad = row % 2 === 0;
+      const isVerticalRoad = col % 2 === 0;
+      if (!isHorizontalRoad && !isVerticalRoad) continue;
+
+      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
+      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
+
+      // Road segment
+      if (isHorizontalRoad) {
+        const geo = new THREE.PlaneGeometry(BLOCK_SIZE, 4);
+        const road = new THREE.Mesh(geo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.set(cx, 0.01, cz);
+        scene.add(road);
+      }
+      if (isVerticalRoad) {
+        const geo = new THREE.PlaneGeometry(4, BLOCK_SIZE);
+        const road = new THREE.Mesh(geo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.set(cx, 0.01, cz);
+        scene.add(road);
+      }
+
+      // Road markings (dashed center line)
+      if (isVerticalRoad) {
+        for (let i = 0; i < 4; i++) {
+          const markGeo = new THREE.PlaneGeometry(0.3, 2);
+          const markMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+          const mark = new THREE.Mesh(markGeo, markMat);
+          mark.rotation.x = -Math.PI / 2;
+          mark.position.set(cx, 0.02, cz - BLOCK_SIZE / 2 + 2.5 + i * 5);
+          scene.add(mark);
+        }
+      }
+    }
+  }
+
+  // Buildings
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      const isHorizontalRoad = row % 2 === 0;
+      const isVerticalRoad = col % 2 === 0;
+      if (isHorizontalRoad || isVerticalRoad) continue;
+
+      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
+      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
+      const w = BLOCK_SIZE - 2;
+      const d = BLOCK_SIZE - 2;
+      const h = 4 + Math.random() * 12;
+
+      const colorIdx = Math.floor(Math.random() * BUILDING_COLORS.length);
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshLambertMaterial({ color: BUILDING_COLORS[colorIdx] });
+      const building = new THREE.Mesh(geo, mat);
+      building.position.set(cx, h / 2, cz);
+      scene.add(building);
+
+      // Rooftop accent
+      const roofGeo = new THREE.BoxGeometry(w * 0.6, 0.5, d * 0.6);
+      const roofMat = new THREE.MeshLambertMaterial({ color: 0x888899 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(cx, h + 0.25, cz);
+      scene.add(roof);
+
+      // Windows (small emissive squares on building sides)
+      const windowMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa });
+      const winPerFloor = 3;
+      const floors = Math.floor(h / 3);
+      for (let floor = 0; floor < floors; floor++) {
+        for (let wIdx = 0; wIdx < winPerFloor; wIdx++) {
+          // Front face
+          const winGeo = new THREE.PlaneGeometry(1, 1.5);
+          const win = new THREE.Mesh(winGeo, windowMat);
+          const wx = cx - w / 2 + (w / (winPerFloor + 1)) * (wIdx + 1);
+          const wy = floor * 3 + 2;
+          win.position.set(wx, wy, cz + d / 2 + 0.01);
+          scene.add(win);
+        }
+      }
+    }
+  }
+}
+
+// ─── PLAYER ───────────────────────────────────────────────────────────────
+let playerMesh;
+function createPlayer() {
+  const group = new THREE.Group();
+
+  // Car body
+  const bodyGeo = new THREE.BoxGeometry(2, 1, 3.5);
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.7;
+  group.add(body);
+
+  // Cabin
+  const cabinGeo = new THREE.BoxGeometry(1.6, 0.8, 2);
+  const cabinMat = new THREE.MeshLambertMaterial({ color: 0x333355 });
+  const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+  cabin.position.set(0, 1.4, -0.2);
+  group.add(cabin);
+
+  // Wheels
+  const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 8);
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const wheelPositions = [[-1, 0.4, 1.2], [1, 0.4, 1.2], [-1, 0.4, -1.2], [1, 0.4, -1.2]];
+  for (const [wx, wy, wz] of wheelPositions) {
+    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(wx, wy, wz);
+    group.add(wheel);
+  }
+
+  // Headlights
+  const lightGeo = new THREE.BoxGeometry(0.4, 0.3, 0.1);
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
+  const lf = new THREE.Mesh(lightGeo, lightMat);
+  lf.position.set(-0.6, 0.7, 1.76);
+  group.add(lf);
+  const rf = new THREE.Mesh(lightGeo, lightMat);
+  rf.position.set(0.6, 0.7, 1.76);
+  group.add(rf);
+
+  // Taillights
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const lb = new THREE.Mesh(lightGeo, tailMat);
+  lb.position.set(-0.6, 0.7, -1.76);
+  group.add(lb);
+  const rb = new THREE.Mesh(lightGeo, tailMat);
+  rb.position.set(0.6, 0.7, -1.76);
+  group.add(rb);
+
+  group.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
+  scene.add(group);
+  playerMesh = group;
+}
+
+// ─── NPCs ─────────────────────────────────────────────────────────────────
+const npcs = [];
+function createNPCs() {
+  const positions = [
+    [30, 30], [70, 30], [30, 70], [90, 50], [50, 90],
+  ];
+
+  const npcColors = [0x228822, 0x882288, 0x228888, 0x884422, 0x442288];
+
+  for (let i = 0; i < positions.length; i++) {
+    const [x, z] = positions[i];
+    const group = new THREE.Group();
+
+    // Body
+    const bodyGeo = new THREE.BoxGeometry(0.8, 1.4, 0.5);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: npcColors[i] });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.9;
+    group.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xffcc99 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.85;
+    group.add(head);
+
+    group.position.set(x, 0, z);
+    group.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(group);
+
+    npcs.push({
+      mesh: group,
+      state: 'idle',
+      targetX: x,
+      targetZ: z,
+      walkTimer: 0,
+    });
+  }
+}
+
+// ─── CAMERA ───────────────────────────────────────────────────────────────
+function updateCamera() {
+  if (!playerMesh) return;
+  const px = playerMesh.position.x;
+  const pz = playerMesh.position.z;
+  const zoom = state.cameraZoom;
+  const aspect = window.innerWidth / window.innerHeight;
+
+  camera.left = -zoom * aspect / 2;
+  camera.right = zoom * aspect / 2;
+  camera.top = zoom / 2;
+  camera.bottom = -zoom / 2;
+  camera.position.set(px, zoom, pz);
+  camera.lookAt(px, 0, pz);
+  camera.updateProjectionMatrix();
+}
+
+// ─── INPUT ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || k === 'arrowup') state.keys.w = true;
+  if (k === 'a' || k === 'arrowleft') state.keys.a = true;
+  if (k === 's' || k === 'arrowdown') state.keys.s = true;
+  if (k === 'd' || k === 'arrowright') state.keys.d = true;
+});
+
+document.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || k === 'arrowup') state.keys.w = false;
+  if (k === 'a' || k === 'arrowleft') state.keys.a = false;
+  if (k === 's' || k === 'arrowdown') state.keys.s = false;
+  if (k === 'd' || k === 'arrowright') state.keys.d = false;
+});
+
+// Touch joystick
+const joystickZone = document.getElementById('joystick-zone');
+const joystickThumb = document.getElementById('joystick-thumb');
+const BASE_R = 60;
+let touchId = null;
+let joyX = 0, joyY = 0;
+
+joystickZone.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  touchId = e.changedTouches[0].identifier;
+  updateJoystick(e.changedTouches[0]);
+}, { passive: false });
+
+joystickZone.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchId) { updateJoystick(t); break; }
+  }
+}, { passive: false });
+
+joystickZone.addEventListener('touchend', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchId) {
+      touchId = null;
+      joyX = 0; joyY = 0;
+      joystickThumb.style.transform = 'translate(-50%, -50%)';
+      break;
+    }
+  }
+});
+
+function updateJoystick(touch) {
+  const rect = joystickZone.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  let dx = touch.clientX - cx;
+  let dy = touch.clientY - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > BASE_R) { dx *= BASE_R / dist; dy *= BASE_R / dist; }
+  joyX = dx / BASE_R;
+  joyY = dy / BASE_R;
+  joystickThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+
+// Zoom buttons
+document.getElementById('zoom-in').addEventListener('click', () => {
+  state.cameraZoom = Math.max(20, state.cameraZoom - 15);
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  state.cameraZoom = Math.min(150, state.cameraZoom + 15);
+});
+
+// Mouse wheel zoom
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  state.cameraZoom = Math.max(20, Math.min(150, state.cameraZoom + (e.deltaY > 0 ? 10 : -10)));
+}, { passive: false });
+
+// Resize
+window.addEventListener('resize', () => {
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.left = -state.cameraZoom * aspect / 2;
+  camera.right = state.cameraZoom * aspect / 2;
+  camera.top = state.cameraZoom / 2;
+  camera.bottom = -state.cameraZoom / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── HUD ──────────────────────────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('hud-cash').textContent = state.cash;
+  document.getElementById('hud-health').textContent = state.health;
+  document.getElementById('hud-wanted').textContent = '★'.repeat(state.wantedLevel);
+}
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function updatePlayer(dt) {
+  if (!playerMesh) return;
+
+  const speed = 20;
+  let dx = 0, dz = 0;
+
+  if (state.keys.w) dz -= 1;
+  if (state.keys.s) dz += 1;
+  if (state.keys.a) dx -= 1;
+  if (state.keys.d) dx += 1;
+
+  // Joystick overrides
+  if (Math.abs(joyX) > 0.1 || Math.abs(joyY) > 0.1) {
+    dx = joyX;
+    dz = joyY;
+  }
+
+  if (dx !== 0 || dz !== 0) {
+    const angle = Math.atan2(dx, dz);
+    playerMesh.rotation.y = angle;
+    state.playerRot = angle;
+
+    const vx = Math.sin(angle) * speed * dt;
+    const vz = Math.cos(angle) * speed * dt;
+
+    let nx = playerMesh.position.x + vx;
+    let nz = playerMesh.position.z + vz;
+
+    // World bounds
+    nx = Math.max(1, Math.min(WORLD_SIZE - 1, nx));
+    nz = Math.max(1, Math.min(WORLD_SIZE - 1, nz));
+
+    playerMesh.position.x = nx;
+    playerMesh.position.z = nz;
+  }
+}
+
+function updateNPCs(dt) {
+  for (const npc of npcs) {
+    if (npc.state === 'walking') {
+      const dx = npc.targetX - npc.mesh.position.x;
+      const dz = npc.targetZ - npc.mesh.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 0.5) {
+        npc.state = 'idle';
+        npc.mesh.rotation.y = Math.random() * Math.PI * 2;
+      } else {
+        const speed = 3;
+        npc.mesh.position.x += (dx / dist) * speed * dt;
+        npc.mesh.position.z += (dz / dist) * speed * dt;
+        npc.mesh.rotation.y = Math.atan2(dx, dz);
+      }
+    } else {
+      npc.walkTimer -= dt;
+      if (npc.walkTimer <= 0) {
+        // Pick random road cell
+        const rx = 2 + Math.floor(Math.random() * (GRID_SIZE - 2)) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        const rz = 2 + Math.floor(Math.random() * (GRID_SIZE - 2)) * BLOCK_SIZE + BLOCK_SIZE / 2;
+        npc.targetX = rx;
+        npc.targetZ = rz;
+        npc.state = 'walking';
+        npc.walkTimer = 3 + Math.random() * 5;
+      }
+    }
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  updatePlayer(dt);
+  updateNPCs(dt);
+  updateCamera();
+  updateHUD();
+
+  renderer.render(scene, camera);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+try {
+  createMap();
+  createPlayer();
+  createNPCs();
+  updateCamera();
+  animate();
+} catch (err) {
+  document.getElementById('error').style.display = 'block';
+  document.getElementById('error').textContent = 'ERROR: ' + err.message;
+  console.error(err);
+}
+</script>
+</body>
+</html>
