@@ -92,9 +92,9 @@
       transition: none;
     }
 
-    #zoom-controls {
+    #weapon-controls {
       position: absolute;
-      top: 16px;
+      bottom: 160px;
       right: 16px;
       display: flex;
       flex-direction: column;
@@ -102,21 +102,44 @@
       z-index: 10;
     }
 
-    .zoom-btn {
-      width: 40px;
-      height: 40px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 6px;
+    .wbtn {
+      width: 72px;
+      height: 38px;
+      background: rgba(8, 16, 24, 0.82);
+      border: 2px solid rgba(0, 210, 180, 0.35);
+      border-radius: 8px;
       color: #fff;
-      font-size: 22px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
       cursor: pointer;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 2px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    .zoom-btn:active { background: rgba(255,255,255,0.35); }
+    .wbtn:active {
+      transform: scale(0.95);
+    }
+
+    .wbtn--active {
+      border-width: 2px;
+    }
+
+    .wbtn-key {
+      font-size: 9px;
+      opacity: 0.45;
+      font-weight: 500;
+    }
 
     #error {
       position: absolute;
@@ -142,6 +165,21 @@
 <div id="zoom-controls">
   <button class="zoom-btn" id="zoom-in">+</button>
   <button class="zoom-btn" id="zoom-out">−</button>
+</div>
+
+<div id="weapon-controls">
+  <button class="wbtn wbtn--active" id="wbtn-0" onclick="switchWeapon(0)">
+    <span class="wbtn-key">1</span>
+    <span>PISTOL</span>
+  </button>
+  <button class="wbtn" id="wbtn-1" onclick="switchWeapon(1)">
+    <span class="wbtn-key">2</span>
+    <span>SHOTGUN</span>
+  </button>
+  <button class="wbtn" id="wbtn-2" onclick="switchWeapon(2)">
+    <span class="wbtn-key">3</span>
+    <span>SMG</span>
+  </button>
 </div>
 
 <div id="joystick-zone">
@@ -178,6 +216,12 @@ const state = {
   cameraZoom: 80,
   playerRot: 0,
   keys: { w: false, a: false, s: false, d: false },
+  weapon: 0,
+  weapons: [
+    { name: 'PISTOL',  color: '#ffdd00', key: '1' },
+    { name: 'SHOTGUN', color: '#ff7700', key: '2' },
+    { name: 'SMG',     color: '#00ffcc', key: '3' },
+  ],
 };
 
 // ─── SCENE SETUP ──────────────────────────────────────────────────────────
@@ -466,6 +510,23 @@ window.addEventListener('resize', () => {
 });
 
 // ─── HUD ──────────────────────────────────────────────────────────────────
+function switchWeapon(idx) {
+  state.weapon = idx;
+  for (let i = 0; i < 3; i++) {
+    const btn = document.getElementById('wbtn-' + i);
+    if (!btn) continue;
+    if (i === idx) {
+      btn.classList.add('wbtn--active');
+      btn.style.borderColor = state.weapons[i].color;
+      btn.style.boxShadow = '0 0 12px ' + state.weapons[i].color + '60';
+    } else {
+      btn.classList.remove('wbtn--active');
+      btn.style.borderColor = 'rgba(0, 210, 180, 0.35)';
+      btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.4)';
+    }
+  }
+}
+
 function updateHUD() {
   document.getElementById('hud-cash').textContent = state.cash;
   document.getElementById('hud-health').textContent = state.health;
