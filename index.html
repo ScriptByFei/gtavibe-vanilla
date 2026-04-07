@@ -217,10 +217,12 @@ const state = {
   playerRot: 0,
   keys: { w: false, a: false, s: false, d: false },
   weapon: 0,
+  lastShot: 0,
+  bullets: [],
   weapons: [
-    { name: 'PISTOL',  color: '#ffdd00', key: '1' },
-    { name: 'SHOTGUN', color: '#ff7700', key: '2' },
-    { name: 'SMG',     color: '#00ffcc', key: '3' },
+    { name: 'PISTOL',  fireRate: 280, damage: 40, speed: 45, spread: 0,    pellets: 1,  color: '#ffdd00', hex: 0xffdd00 },
+    { name: 'SHOTGUN', fireRate: 750, damage: 18, speed: 40, spread: 0.1,  pellets: 5,  color: '#ff7700', hex: 0xff7700 },
+    { name: 'SMG',     fireRate: 90,  damage: 12, speed: 50, spread: 0.03, pellets: 1,  color: '#00ffcc', hex: 0x00ffcc },
   ],
 };
 
@@ -366,7 +368,7 @@ function createPlayer() {
 }
 
 // ─── NPCs ─────────────────────────────────────────────────────────────────
-const npcs = [];
+window.npcs = [];
 function createNPCs() {
   const positions = [
     [30, 30], [70, 30], [30, 70], [90, 50], [50, 90],
@@ -573,8 +575,72 @@ function updatePlayer(dt) {
   }
 }
 
+function findNearestNPC() {
+  if (!playerMesh || window.npcs.length === 0) return null;
+  let nearest = null, minDist = Infinity;
+  for (const npc of window.npcs) {
+    const dx = npc.mesh.position.x - playerMesh.position.x;
+    const dz = npc.mesh.position.z - playerMesh.position.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d < minDist) { minDist = d; nearest = npc; }
+  }
+  return minDist < 20 ? nearest : null;
+}
+
+function autoFire() {
+  if (!playerMesh) return;
+  const now = performance.now();
+  const wp = state.weapons[state.weapon];
+  if (now - state.lastShot < wp.fireRate) return;
+  const nearest = findNearestNPC();
+  if (!nearest) return;
+  state.lastShot = now;
+  const dx = nearest.mesh.position.x - playerMesh.position.x;
+  const dz = nearest.mesh.position.z - playerMesh.position.z;
+  playerMesh.rotation.y = Math.atan2(dx, dz);
+  for (let i = -Math.floor(wp.pellets / 2); i <= Math.floor(wp.pellets / 2); i++) {
+    const spread = i * wp.spread;
+    const angle = playerMesh.rotation.y + spread;
+    const bx = playerMesh.position.x + Math.sin(angle) * 2;
+    const bz = playerMesh.position.z + Math.cos(angle) * 2;
+    const geo = new THREE.BoxGeometry(0.15, 0.15, 0.6);
+    const mat = new THREE.MeshBasicMaterial({ color: wp.hex });
+    const bullet = new THREE.Mesh(geo, mat);
+    bullet.position.set(bx, 1.6, bz);
+    bullet.rotation.y = angle;
+    scene.add(bullet);
+    state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * wp.speed, vz: Math.cos(angle) * wp.speed, damage: wp.damage, life: 1.2 });
+  }
+}
+
+function updateBullets(dt) {
+  for (let i = state.bullets.length - 1; i >= 0; i--) {
+    const b = state.bullets[i];
+    b.mesh.position.x += b.vx * dt;
+    b.mesh.position.z += b.vz * dt;
+    b.life -= dt;
+    if (b.life <= 0) { scene.remove(b.mesh); state.bullets.splice(i, 1); continue; }
+    for (let j = window.npcs.length - 1; j >= 0; j--) {
+      const npc = window.npcs[j];
+      const dx = b.mesh.position.x - npc.mesh.position.x;
+      const dz = b.mesh.position.z - npc.mesh.position.z;
+      if (Math.sqrt(dx * dx + dz * dz) < 0.9) {
+        npc.hp -= b.damage;
+        scene.remove(b.mesh);
+        state.bullets.splice(i, 1);
+        if (npc.hp <= 0) {
+          scene.remove(npc.mesh);
+          window.npcs.splice(j, 1);
+          state.cash++;
+        }
+        break;
+      }
+    }
+  }
+}
+
 function updateNPCs(dt) {
-  for (const npc of npcs) {
+  for (const npc of window.npcs) {
     if (npc.state === 'walking') {
       const dx = npc.targetX - npc.mesh.position.x;
       const dz = npc.targetZ - npc.mesh.position.z;
@@ -619,6 +685,8 @@ function animate() {
 
   updatePlayer(dt);
   updateNPCs(dt);
+  updateBullets(dt);
+  autoFire();
   updateCamera();
   updateHUD();
 
