@@ -419,8 +419,8 @@ const state = {
 
 // ─── SCENE ────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0c1a0c);
-scene.fog = new THREE.FogExp2(0x0c1a0c, 0.012);
+scene.background = new THREE.Color(0x1e3a1e);
+scene.fog = new THREE.FogExp2(0x1e3a1e, 0.015);
 
 const aspect = window.innerWidth / window.innerHeight;
 const camera = new THREE.OrthographicCamera(-30 * aspect / 2, 30 * aspect / 2, 30 / 2, -30 / 2, 0.1, 500);
@@ -439,14 +439,14 @@ scene.add(dirLight);
 function createMap() {
   // Ground — dark green with subtle checker variation
   const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
-  const groundMat = new THREE.MeshLambertMaterial({ color: 0x0e1e0e });
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x203820 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(WORLD_SIZE / 2, -0.02, WORLD_SIZE / 2);
   scene.add(ground);
 
   // Subtle ground detail — scattered dark patches
-  const patchMat = new THREE.MeshLambertMaterial({ color: 0x0a160a });
+  const patchMat = new THREE.MeshLambertMaterial({ color: 0x183018 });
   for (let i = 0; i < 40; i++) {
     const w = 8 + Math.random() * 20;
     const d = 8 + Math.random() * 20;
@@ -458,7 +458,7 @@ function createMap() {
   }
 
   // Grass tufts
-  const grassColors = [0x2d5a1b, 0x3a6b2a, 0x4d7a38, 0x5d8a45];
+  const grassColors = [0x4d7a38, 0x5d8a48, 0x6d9a58, 0x7daa68, 0x8dba78];
   for (let i = 0; i < 350; i++) {
     const x = Math.random() * WORLD_SIZE;
     const z = Math.random() * WORLD_SIZE;
