@@ -162,16 +162,17 @@
 <body>
 
 <div id="hud">
-  <div><span style="color:#888">SCORE</span> <span id="hud-score" style="color:#ffdd00">0</span></div>
-  <div><span style="color:#888">WAVE</span> <span id="hud-wave" style="color:#0ff">1</span> &nbsp; <span style="color:#888">KILLS</span> <span id="hud-kills" style="color:#f66">0</span></div>
-  <div><span style="color:#888">HEALTH</span> <span id="hud-health">100</span><span id="health-bar-bg"><span id="health-bar"></span></span></div>
+  <div><span style="color:#888">LVL</span> <span id="hud-level" style="color:#f0f">1</span> &nbsp; <span style="color:#888">XP</span> <span id="hud-xp">0</span>/<span id="hud-xp-next">50</span></div>
+  <div><span style="color:#888">SCORE</span> <span id="hud-score" style="color:#ffdd00">0</span> &nbsp; <span style="color:#888">WAVE</span> <span id="hud-wave" style="color:#0ff">1</span> &nbsp; <span style="color:#888">KILLS</span> <span id="hud-kills" style="color:#f66">0</span></div>
+  <div><span style="color:#888">HP</span> <span id="hud-health">100</span><span id="health-bar-bg"><span id="health-bar"></span></span></div>
   <div><span style="color:#888">GUN</span> <span id="hud-weapon" style="color:#ffdd00">PISTOL</span> &nbsp; <span id="hud-ammo-count">12</span> <span id="hud-reload" style="color:#f60;display:none">RELOAD</span></div>
 </div>
 
 <div id="weapon-controls">
-  <button class="ctrl-btn" id="btn-pistol" style="width:64px;font-size:11px">1 PISTOL</button>
-  <button class="ctrl-btn" id="btn-shotgun" style="width:64px;font-size:11px">2 SG</button>
-  <button class="ctrl-btn" id="btn-reload" style="width:64px;font-size:11px">R REL</button>
+  <button class="ctrl-btn" id="btn-weapon-0" onclick="switchWeapon(0)">1 PISTOL</button>
+  <button class="ctrl-btn" id="btn-weapon-1" onclick="switchWeapon(1)">2 SG</button>
+  <button class="ctrl-btn" id="btn-weapon-2" onclick="switchWeapon(2)">3 SMG</button>
+  <button class="ctrl-btn" id="btn-reload">R</button>
 </div>
 
 <div id="joystick-zone" style="opacity:0;pointer-events:none">
@@ -215,6 +216,8 @@ const state = {
   score: 0,
   wave: 1,
   waveKills: 0,
+  xp: 0,
+  level: 1,
   zombies: [],
   bullets: [],
   lastShot: 0,
@@ -222,6 +225,12 @@ const state = {
   reloadTimer: 0,
   gameOver: false,
 };
+
+const WEAPONS = [
+  { name: 'PISTOL', ammo: 12, fireRate: 280, damage: 40, bulletSpeed: 40, spread: 0, color: '#ffdd00', minLevel: 1 },
+  { name: 'SHOTGUN', ammo: 6, fireRate: 750, damage: 20, bulletSpeed: 40, spread: 0.1, pellets: 5, color: '#ff8800', minLevel: 3 },
+  { name: 'SMG', ammo: 30, fireRate: 100, damage: 15, bulletSpeed: 45, spread: 0.05, color: '#00ffcc', minLevel: 5 },
+];
 
 // ─── SCENE SETUP ──────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
@@ -417,8 +426,6 @@ function updateJoystick(touch) {
 }
 
 // Weapon buttons
-document.getElementById('btn-pistol').addEventListener('click', () => switchWeapon('pistol'));
-document.getElementById('btn-shotgun').addEventListener('click', () => switchWeapon('shotgun'));
 document.getElementById('btn-reload').addEventListener('click', () => reload());
 
 window.addEventListener('resize', () => {
@@ -432,55 +439,67 @@ window.addEventListener('resize', () => {
 });
 
 // ─── WEAPONS ─────────────────────────────────────────────────────────────
-function switchWeapon(w) {
+function switchWeapon(idx) {
   if (state.reloading) return;
-  state.weapon = w;
+  const w = WEAPONS[idx];
+  if (state.level < w.minLevel) {
+    // Show unlock hint
+    const btn = document.getElementById('btn-weapon-' + idx);
+    if (btn) {
+      btn.style.borderColor = '#f00';
+      setTimeout(() => btn.style.borderColor = 'rgba(0,255,200,0.35)', 500);
+    }
+    return;
+  }
+  state.weapon = w.name.toLowerCase();
 }
 
 function reload() {
   if (state.reloading) return;
-  const needed = state.weapon === 'pistol' ? 12 : 6;
-  const current = state.weapon === 'pistol' ? state.pistolAmmo : state.shotgunAmmo;
+  const w = WEAPONS.find(w => w.name.toLowerCase() === state.weapon);
+  const needed = w ? w.ammo : 12;
+  const current = w ? state.pistolAmmo : state.shotgunAmmo;
   if (current >= needed) return;
   state.reloading = true;
-  state.reloadTimer = state.weapon === 'pistol' ? 1.2 : 2.0;
+  state.reloadTimer = w ? (w.fireRate / 1000) * 1.5 : 1.2;
 }
 
 function shoot() {
   if (!playerMesh || state.gameOver) return;
   const now = performance.now();
-  const weapon = state.weapon;
-  const fireRate = weapon === 'pistol' ? 280 : 750;
-  if (now - state.lastShot < fireRate) return;
+  const w = WEAPONS.find(wp => wp.name.toLowerCase() === state.weapon);
+  if (!w) return;
+  if (now - state.lastShot < w.fireRate) return;
   if (state.reloading) return;
 
-  if (weapon === 'pistol') {
-    if (state.pistolAmmo <= 0) { reload(); return; }
-    state.pistolAmmo--;
-    state.lastShot = now;
-    createBullet(40);
+  const ammoKey = state.weapon === 'pistol' ? 'pistolAmmo' : state.weapon === 'shotgun' ? 'shotgunAmmo' : 'pistolAmmo';
+  if (state[ammoKey] <= 0) { reload(); return; }
+  state[ammoKey]--;
+  state.lastShot = now;
+
+  if (w.pellets) {
+    for (let i = -Math.floor(w.pellets / 2); i <= Math.floor(w.pellets / 2); i++) {
+      createBullet(w.damage, i * w.spread, w.bulletSpeed, w.color);
+    }
   } else {
-    if (state.shotgunAmmo <= 0) { reload(); return; }
-    state.shotgunAmmo--;
-    state.lastShot = now;
-    for (let i = -2; i <= 2; i++) createBullet(20, i * 0.1);
+    createBullet(w.damage, 0, w.bulletSpeed, w.color);
   }
 }
 
-function createBullet(damage, spread = 0) {
+function createBullet(damage, spread, speed, color) {
   if (!playerMesh) return;
   const angle = playerMesh.rotation.y + spread;
   const px = playerMesh.position.x;
   const pz = playerMesh.position.z;
   const bx = px + Math.sin(angle) * 1.8;
   const bz = pz + Math.cos(angle) * 1.8;
-  const geo = new THREE.BoxGeometry(0.25, 0.25, 1.0);
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
+  const geo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
+  const mat = new THREE.MeshBasicMaterial({ color });
   const bullet = new THREE.Mesh(geo, mat);
   bullet.position.set(bx, 1.5, bz);
   bullet.rotation.y = angle;
   scene.add(bullet);
-  state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * 40, vz: Math.cos(angle) * 40, damage, life: 1.5 });
+  state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * speed, vz: Math.cos(angle) * speed, damage, life: 1.5 });
 }
 
 // ─── ZOMBIES ─────────────────────────────────────────────────────────────
@@ -611,6 +630,15 @@ function updateBullets(dt) {
           state.zombies.splice(j, 1);
           state.score++;
           state.waveKills++;
+          state.xp += 10 + state.wave * 2;
+          // Level up every 50 XP
+          const newLevel = Math.floor(state.xp / 50) + 1;
+          if (newLevel > state.level) state.level = newLevel;
+          // Auto-switch weapon if current is now unlocked
+          const currentW = WEAPONS.find(w => w.name.toLowerCase() === state.weapon);
+          if (currentW && state.level >= currentW.minLevel) {
+            // already good
+          }
         }
         break;
       }
@@ -627,13 +655,26 @@ function updateHUD() {
   document.getElementById('hud-health').textContent = Math.ceil(state.health);
   document.getElementById('health-bar').style.width = Math.max(0, state.health) + '%';
   document.getElementById('health-bar').style.background =
-    state.health > 50 ? '#4caf50' : state.health > 25 ? '#ff9800' : '#f44336';
-  const ammo = state.weapon === 'pistol' ? state.pistolAmmo : state.shotgunAmmo;
-  document.getElementById('hud-ammo-count').textContent = ammo;
-  document.getElementById('hud-weapon').textContent = state.weapon.toUpperCase();
+    state.health > 50 ? '#00ff88' : state.health > 25 ? '#ff9800' : '#f44336';
   document.getElementById('hud-reload').style.display = state.reloading ? 'block' : 'none';
-  document.getElementById('btn-pistol').style.borderColor = state.weapon === 'pistol' ? '#ff0' : 'rgba(255,255,255,0.3)';
-  document.getElementById('btn-shotgun').style.borderColor = state.weapon === 'shotgun' ? '#ff0' : 'rgba(255,255,255,0.3)';
+
+  const w = WEAPONS.find(wp => wp.name.toLowerCase() === state.weapon);
+  document.getElementById('hud-ammo-count').textContent = w ? (state.weapon === 'pistol' ? state.pistolAmmo : state.weapon === 'shotgun' ? state.shotgunAmmo : state.pistolAmmo) : '?';
+  document.getElementById('hud-weapon').textContent = w ? w.name : '?';
+  if (w) document.getElementById('hud-weapon').style.color = w.color;
+
+  document.getElementById('hud-level').textContent = state.level;
+  document.getElementById('hud-xp').textContent = state.xp;
+  document.getElementById('hud-xp-next').textContent = state.level * 50;
+
+  for (let i = 0; i < WEAPONS.length; i++) {
+    const btn = document.getElementById('btn-weapon-' + i);
+    if (!btn) continue;
+    const weaponDef = WEAPONS[i];
+    const locked = state.level < weaponDef.minLevel;
+    btn.style.borderColor = state.weapon === weaponDef.name.toLowerCase() ? weaponDef.color : locked ? 'rgba(80,80,80,0.5)' : 'rgba(0,255,200,0.35)';
+    btn.style.color = locked ? '#555' : '#fff';
+  }
 }
 
 // ─── GAME LOOP ────────────────────────────────────────────────────────────
