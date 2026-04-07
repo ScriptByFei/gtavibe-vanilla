@@ -488,6 +488,7 @@ function reload() {
 }
 
 function shoot() {
+  if (!playerMesh) return;
   const now = performance.now();
   const weapon = state.weapon;
   const fireRate = weapon === 'pistol' ? 300 : 800;
@@ -498,31 +499,51 @@ function shoot() {
     if (state.pistolAmmo <= 0) { reload(); return; }
     state.pistolAmmo--;
     state.lastShot = now;
-    createBullet(0.4, 40);
+    createBullet(40);
   } else {
     if (state.shotgunAmmo <= 0) { reload(); return; }
     state.shotgunAmmo--;
     state.lastShot = now;
-    // Shotgun spread
     for (let i = -2; i <= 2; i++) {
-      createBullet(0.5, 25, i * 0.08);
+      createBullet(25, i * 0.1);
     }
   }
 }
 
-function createBullet(speed, damage, angleOffset = 0) {
+function createBullet(damage, spread = 0) {
   if (!playerMesh) return;
-  const angle = playerMesh.rotation.y + angleOffset;
-  const bx = playerMesh.position.x + Math.sin(angle) * 1.5;
-  const bz = playerMesh.position.z + Math.cos(angle) * 1.5;
-  const geo = new THREE.BoxGeometry(0.15, 0.15, 0.6);
+  // Aim toward mouse cursor
+  const worldMouse = getWorldMousePos();
+  const px = playerMesh.position.x;
+  const pz = playerMesh.position.z;
+  const angle = Math.atan2(worldMouse.x - px, worldMouse.z - pz) + spread;
+
+  const bx = px + Math.sin(angle) * 1.8;
+  const bz = pz + Math.cos(angle) * 1.8;
+  const geo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
   const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
   const bullet = new THREE.Mesh(geo, mat);
   bullet.position.set(bx, 1.5, bz);
   bullet.rotation.y = angle;
   scene.add(bullet);
-  state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * speed, vz: Math.cos(angle) * speed, damage, life: 1.5 });
+  state.bullets.push({ mesh: bullet, vx: Math.sin(angle) * 40, vz: Math.cos(angle) * 40, damage, life: 1.5 });
 }
+
+function getWorldMousePos() {
+  // Raycast mouse to ground plane for aiming
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.5);
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouseNDC, camera);
+  const hit = new THREE.Vector3();
+  ray.ray.intersectPlane(groundPlane, hit);
+  return hit;
+}
+
+let mouseNDC = new THREE.Vector2();
+window.addEventListener('mousemove', (e) => {
+  mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+});
 
 function updateBullets(dt) {
   for (let i = state.bullets.length - 1; i >= 0; i--) {
@@ -622,7 +643,15 @@ function animate() {
     }
   }
 
-  if (state.shooting) shoot();
+  if (state.shooting) {
+    shoot();
+    // Rotate character toward mouse when shooting
+    if (playerMesh) {
+      const wp = getWorldMousePos();
+      const angle = Math.atan2(wp.x - playerMesh.position.x, wp.z - playerMesh.position.z);
+      playerMesh.rotation.y = angle;
+    }
+  }
 
   updatePlayer(dt);
   updateNPCs(dt);
