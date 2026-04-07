@@ -68,33 +68,7 @@
       transform: translate(-50%, -50%);
     }
 
-    #zoom-controls {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      z-index: 10;
-    }
-
-    .zoom-btn {
-      width: 56px;
-      height: 56px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 6px;
-      color: #fff;
-      font-size: 22px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .zoom-btn:active { background: rgba(255,255,255,0.35); }
-
-    #fire-btn {
+#fire-btn {
       position: absolute;
       bottom: 40px;
       right: 40px;
@@ -209,7 +183,7 @@ const WORLD_SIZE = GRID_SIZE * BLOCK_SIZE;
 // ─── STATE ────────────────────────────────────────────────────────────────
 const state = {
   health: 100,
-  cameraZoom: 50,
+
   playerRot: 0,
   keys: { w: false, a: false, s: false, d: false },
   // Combat
@@ -235,10 +209,10 @@ scene.fog = new THREE.Fog(0x1a1a2e, 50, 120);
 
 const aspect = window.innerWidth / window.innerHeight;
 const camera = new THREE.OrthographicCamera(
-  -state.cameraZoom * aspect / 2,
-  state.cameraZoom * aspect / 2,
-  state.cameraZoom / 2,
-  -state.cameraZoom / 2,
+  -40 * aspect / 2,
+  40 * aspect / 2,
+  40 / 2,
+  -40 / 2,
   0.1, 500
 );
 
@@ -323,13 +297,12 @@ function updateCamera() {
   if (!playerMesh) return;
   const px = playerMesh.position.x;
   const pz = playerMesh.position.z;
-  const zoom = state.cameraZoom;
   const aspect = window.innerWidth / window.innerHeight;
-  camera.left = -zoom * aspect / 2;
-  camera.right = zoom * aspect / 2;
-  camera.top = zoom / 2;
-  camera.bottom = -zoom / 2;
-  camera.position.set(px, zoom, pz);
+  camera.left = -40 * aspect / 2;
+  camera.right = 40 * aspect / 2;
+  camera.top = 40 / 2;
+  camera.bottom = -40 / 2;
+  camera.position.set(px, 40, pz);
   camera.lookAt(px, 0, pz);
   camera.updateProjectionMatrix();
 }
@@ -409,30 +382,17 @@ fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); state.shooting
 fireBtn.addEventListener('mousedown', () => { state.shooting = true; shoot(); });
 fireBtn.addEventListener('mouseup', () => { state.shooting = false; });
 
-// Zoom buttons
-document.getElementById('zoom-in').addEventListener('click', () => {
-  state.cameraZoom = Math.max(20, state.cameraZoom - 15);
-});
-document.getElementById('zoom-out').addEventListener('click', () => {
-  state.cameraZoom = Math.min(150, state.cameraZoom + 15);
-});
-
 // Weapon buttons
 document.getElementById('btn-pistol').addEventListener('click', () => switchWeapon('pistol'));
 document.getElementById('btn-shotgun').addEventListener('click', () => switchWeapon('shotgun'));
 document.getElementById('btn-reload').addEventListener('click', () => reload());
 
-window.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  state.cameraZoom = Math.max(20, Math.min(150, state.cameraZoom + (e.deltaY > 0 ? 10 : -10)));
-}, { passive: false });
-
 window.addEventListener('resize', () => {
   const aspect = window.innerWidth / window.innerHeight;
-  camera.left = -state.cameraZoom * aspect / 2;
-  camera.right = state.cameraZoom * aspect / 2;
-  camera.top = state.cameraZoom / 2;
-  camera.bottom = -state.cameraZoom / 2;
+  camera.left = -40 * aspect / 2;
+  camera.right = 40 * aspect / 2;
+  camera.top = 40 / 2;
+  camera.bottom = -40 / 2;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
