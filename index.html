@@ -167,9 +167,8 @@ import * as THREE from 'three';
 const GRID_SIZE = 5;
 const BLOCK_SIZE = 20;
 const WORLD_SIZE = GRID_SIZE * BLOCK_SIZE;
-const ROAD_COLOR = 0x2a2a3a;
-const GROUND_COLOR = 0x1a3a1a;
-const BUILDING_COLORS = [0x4a4a6a, 0x5a5a7a, 0x3a3a5a, 0x6a6a8a, 0x555577];
+const GROUND_COLOR = 0x2d5a1e;
+const GRASS_COLORS = [0x3d7a28, 0x4d8a38, 0x5d9a48, 0x6daa58, 0x7dba68];
 
 // ─── STATE ────────────────────────────────────────────────────────────────
 const state = {
@@ -183,8 +182,8 @@ const state = {
 
 // ─── SCENE SETUP ──────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a2e);
-scene.fog = new THREE.Fog(0x1a1a2e, 80, 200);
+scene.background = new THREE.Color(0x1e3a0e);
+scene.fog = new THREE.FogExp2(0x1e3a0e, 0.018);
 
 const frustumSize = state.cameraZoom;
 const aspect = window.innerWidth / window.innerHeight;
@@ -220,90 +219,46 @@ function createMap() {
   ground.position.set(WORLD_SIZE / 2, 0, WORLD_SIZE / 2);
   scene.add(ground);
 
-  // Roads
-  const roadMat = new THREE.MeshLambertMaterial({ color: ROAD_COLOR });
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      const isHorizontalRoad = row % 2 === 0;
-      const isVerticalRoad = col % 2 === 0;
-      if (!isHorizontalRoad && !isVerticalRoad) continue;
-
-      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
-
-      // Road segment
-      if (isHorizontalRoad) {
-        const geo = new THREE.PlaneGeometry(BLOCK_SIZE, 4);
-        const road = new THREE.Mesh(geo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.01, cz);
-        scene.add(road);
-      }
-      if (isVerticalRoad) {
-        const geo = new THREE.PlaneGeometry(4, BLOCK_SIZE);
-        const road = new THREE.Mesh(geo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.set(cx, 0.01, cz);
-        scene.add(road);
-      }
-
-      // Road markings (dashed center line)
-      if (isVerticalRoad) {
-        for (let i = 0; i < 4; i++) {
-          const markGeo = new THREE.PlaneGeometry(0.3, 2);
-          const markMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-          const mark = new THREE.Mesh(markGeo, markMat);
-          mark.rotation.x = -Math.PI / 2;
-          mark.position.set(cx, 0.02, cz - BLOCK_SIZE / 2 + 2.5 + i * 5);
-          scene.add(mark);
-        }
-      }
-    }
+  // Ground patches
+  const patchMat = new THREE.MeshLambertMaterial({ color: 0x254d16 });
+  for (let i = 0; i < 50; i++) {
+    const w = 6 + Math.random() * 18;
+    const d = 6 + Math.random() * 18;
+    const geo = new THREE.PlaneGeometry(w, d);
+    const patch = new THREE.Mesh(geo, patchMat);
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(Math.random() * WORLD_SIZE, 0.005, Math.random() * WORLD_SIZE);
+    scene.add(patch);
   }
 
-  // Buildings
-  for (let row = 0; row < GRID_SIZE; row++) {
-    for (let col = 0; col < GRID_SIZE; col++) {
-      const isHorizontalRoad = row % 2 === 0;
-      const isVerticalRoad = col % 2 === 0;
-      if (isHorizontalRoad || isVerticalRoad) continue;
+  // Grass blades
+  window.grassMeshes = [];
+  for (let i = 0; i < 400; i++) {
+    const x = Math.random() * WORLD_SIZE;
+    const z = Math.random() * WORLD_SIZE;
+    const h = 0.3 + Math.random() * 0.6;
+    const color = GRASS_COLORS[Math.floor(Math.random() * GRASS_COLORS.length)];
+    const geo = new THREE.BoxGeometry(0.12, h, 0.12);
+    const mat = new THREE.MeshLambertMaterial({ color });
+    const blade = new THREE.Mesh(geo, mat);
+    blade.position.set(x, h / 2, z);
+    blade.rotation.y = Math.random() * Math.PI;
+    scene.add(blade);
+    window.grassMeshes.push(blade);
+  }
 
-      const cx = col * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const cz = row * BLOCK_SIZE + BLOCK_SIZE / 2;
-      const w = BLOCK_SIZE - 2;
-      const d = BLOCK_SIZE - 2;
-      const h = 4 + Math.random() * 12;
-
-      const colorIdx = Math.floor(Math.random() * BUILDING_COLORS.length);
-      const geo = new THREE.BoxGeometry(w, h, d);
-      const mat = new THREE.MeshLambertMaterial({ color: BUILDING_COLORS[colorIdx] });
-      const building = new THREE.Mesh(geo, mat);
-      building.position.set(cx, h / 2, cz);
-      scene.add(building);
-
-      // Rooftop accent
-      const roofGeo = new THREE.BoxGeometry(w * 0.6, 0.5, d * 0.6);
-      const roofMat = new THREE.MeshLambertMaterial({ color: 0x888899 });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.set(cx, h + 0.25, cz);
-      scene.add(roof);
-
-      // Windows (small emissive squares on building sides)
-      const windowMat = new THREE.MeshBasicMaterial({ color: 0xffeeaa });
-      const winPerFloor = 3;
-      const floors = Math.floor(h / 3);
-      for (let floor = 0; floor < floors; floor++) {
-        for (let wIdx = 0; wIdx < winPerFloor; wIdx++) {
-          // Front face
-          const winGeo = new THREE.PlaneGeometry(1, 1.5);
-          const win = new THREE.Mesh(winGeo, windowMat);
-          const wx = cx - w / 2 + (w / (winPerFloor + 1)) * (wIdx + 1);
-          const wy = floor * 3 + 2;
-          win.position.set(wx, wy, cz + d / 2 + 0.01);
-          scene.add(win);
-        }
-      }
-    }
+  // Flowers
+  const flowerColors = [0xff4444, 0xffdd44, 0xff88cc, 0xffffff, 0xff6699];
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * WORLD_SIZE;
+    const z = Math.random() * WORLD_SIZE;
+    const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+    const geo = new THREE.CircleGeometry(0.2 + Math.random() * 0.15, 6);
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const flower = new THREE.Mesh(geo, mat);
+    flower.rotation.x = -Math.PI / 2;
+    flower.position.set(x, 0.01, z);
+    scene.add(flower);
   }
 }
 
@@ -590,6 +545,16 @@ function updateNPCs(dt) {
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+  const t = performance.now() * 0.001;
+
+  // Sway grass
+  if (window.grassMeshes) {
+    for (let i = 0; i < window.grassMeshes.length; i++) {
+      const blade = window.grassMeshes[i];
+      const offset = i * 0.7;
+      blade.rotation.x = Math.sin(t * 1.5 + offset) * 0.06;
+    }
+  }
 
   updatePlayer(dt);
   updateNPCs(dt);
