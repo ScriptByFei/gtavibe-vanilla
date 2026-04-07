@@ -11,77 +11,33 @@
 
     #hud {
       position: absolute;
-      top: 20px;
-      left: 20px;
+      top: 10px;
+      left: 10px;
       pointer-events: none;
-    }
-
-    .hud-card {
-      background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(20,20,40,0.8) 100%);
-      border: 2px solid rgba(0,255,200,0.4);
-      border-radius: 12px;
-      padding: 12px 18px;
-      margin-bottom: 8px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 0 20px rgba(0,255,200,0.15), inset 0 0 10px rgba(0,0,0,0.3);
-    }
-
-    .hud-label {
-      font-size: 11px;
-      color: rgba(0,255,200,0.7);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-
-    .hud-value {
-      font-size: 26px;
-      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
       color: #fff;
-      text-shadow: 0 0 10px rgba(0,255,200,0.5);
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(0,255,200,0.25);
+      border-radius: 8px;
+      padding: 8px 12px;
+      line-height: 1.7;
     }
-
-    .hud-row {
-      display: flex;
-      gap: 24px;
-      align-items: center;
-    }
-
     #health-bar-bg {
       display: inline-block;
-      width: 100px;
-      height: 8px;
+      width: 56px;
+      height: 6px;
       background: rgba(255,255,255,0.15);
-      border-radius: 4px;
+      border-radius: 3px;
       overflow: hidden;
       vertical-align: middle;
-      margin-left: 8px;
-      border: 1px solid rgba(0,255,200,0.3);
+      margin-left: 5px;
     }
     #health-bar {
       height: 100%;
       width: 100%;
-      background: linear-gradient(90deg, #00ff88, #00ffcc);
-      border-radius: 4px;
-      transition: width 0.2s;
-      box-shadow: 0 0 8px #00ff88;
-    }
-
-    #hud-ammo {
-      font-size: 20px;
-      font-weight: bold;
-      color: #ffdd00;
-      text-shadow: 0 0 12px rgba(255,220,0,0.6);
-      margin-top: 2px;
-    }
-
-    #hud-reload {
-      color: #ff6600;
-      font-size: 13px;
-      font-weight: bold;
-      display: none;
-      text-shadow: 0 0 10px rgba(255,100,0,0.8);
-      letter-spacing: 1px;
+      background: #00ff88;
+      border-radius: 3px;
     }
 
     .ctrl-btn {
@@ -208,37 +164,10 @@
 <body>
 
 <div id="hud">
-  <div class="hud-card">
-    <div class="hud-label">Score</div>
-    <div class="hud-value" style="color:#ffdd00;text-shadow:0 0 10px rgba(255,220,0,0.5)"><span id="hud-score">0</span></div>
-  </div>
-  <div class="hud-card hud-row">
-    <div>
-      <div class="hud-label">Wave</div>
-      <div class="hud-value" style="color:#00ffcc"><span id="hud-wave">1</span></div>
-    </div>
-    <div>
-      <div class="hud-label">Kills</div>
-      <div class="hud-value" style="color:#ff6b6b"><span id="hud-kills">0</span></div>
-    </div>
-  </div>
-  <div class="hud-card">
-    <div class="hud-label">Health</div>
-    <div>
-      <span id="hud-health">100</span>
-      <span id="health-bar-bg"><span id="health-bar"></span></span>
-    </div>
-  </div>
-  <div class="hud-card">
-    <div class="hud-label">Weapon</div>
-    <div id="hud-ammo"><span id="hud-weapon-name">PISTOL</span> | <span id="hud-ammo-count">12</span></div>
-  </div>
-  <div class="hud-card">
-    <div id="hud-reload">🔄 RELOADING...</div>
-  </div>
+  <div>S <span id="hud-score" style="color:#ffdd00">0</span> W <span id="hud-wave" style="color:#0ff">1</span> K <span id="hud-kills" style="color:#f66">0</span></div>
+  <div>HP <span id="hud-health">100</span><span id="health-bar-bg"><span id="health-bar"></span></span></div>
+  <div><span id="hud-weapon" style="color:#ffdd00">PISTOL</span> <span id="hud-ammo-count">12</span> <span id="hud-reload" style="color:#f60;display:none">⟳</span></div>
 </div>
-
-<div id="fire-btn">FIRE</div>
 
 <div id="weapon-controls">
   <button class="ctrl-btn" id="btn-pistol" style="width:64px;font-size:11px">1 PISTOL</button>
@@ -292,7 +221,6 @@ const state = {
   lastShot: 0,
   reloading: false,
   reloadTimer: 0,
-  shooting: false,
   gameOver: false,
 };
 
@@ -411,6 +339,7 @@ document.addEventListener('keydown', (e) => {
   if (k === '1') switchWeapon('pistol');
   if (k === '2') switchWeapon('shotgun');
   if (k === 'r') reload();
+  if (k === ' ') { e.preventDefault(); shoot(); }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -464,17 +393,6 @@ function updateJoystick(touch) {
   joyY = dy / BASE_R;
   joystickThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 }
-
-// Fire button
-const fireBtn = document.getElementById('fire-btn');
-fireBtn.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  state.shooting = true;
-  shoot();
-}, { passive: false });
-fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); state.shooting = false; });
-fireBtn.addEventListener('mousedown', () => { state.shooting = true; shoot(); });
-fireBtn.addEventListener('mouseup', () => { state.shooting = false; });
 
 // Weapon buttons
 document.getElementById('btn-pistol').addEventListener('click', () => switchWeapon('pistol'));
@@ -690,8 +608,7 @@ function updateHUD() {
     state.health > 50 ? '#4caf50' : state.health > 25 ? '#ff9800' : '#f44336';
   const ammo = state.weapon === 'pistol' ? state.pistolAmmo : state.shotgunAmmo;
   document.getElementById('hud-ammo-count').textContent = ammo;
-  document.getElementById('hud-weapon-name').textContent = state.weapon.toUpperCase();
-  document.getElementById('hud-weapon-name').style.color = state.weapon === 'pistol' ? '#ffdd00' : '#ff8800';
+  document.getElementById('hud-weapon').textContent = state.weapon.toUpperCase();
   document.getElementById('hud-reload').style.display = state.reloading ? 'block' : 'none';
   document.getElementById('btn-pistol').style.borderColor = state.weapon === 'pistol' ? '#ff0' : 'rgba(255,255,255,0.3)';
   document.getElementById('btn-shotgun').style.borderColor = state.weapon === 'shotgun' ? '#ff0' : 'rgba(255,255,255,0.3)';
@@ -745,24 +662,22 @@ function animate() {
     }
   }
 
-  if (state.shooting && !state.gameOver) {
-    // Auto-aim: rotate toward nearest zombie
-    if (playerMesh && state.zombies.length > 0) {
-      let nearest = null, nearestDist = Infinity;
-      for (const z of state.zombies) {
-        if (z.hp <= 0) continue;
-        const dx = z.mesh.position.x - playerMesh.position.x;
-        const dz = z.mesh.position.z - playerMesh.position.z;
-        const d = Math.sqrt(dx * dx + dz * dz);
-        if (d < nearestDist) { nearestDist = d; nearest = z; }
-      }
-      if (nearest) {
-        const dx = nearest.mesh.position.x - playerMesh.position.x;
-        const dz = nearest.mesh.position.z - playerMesh.position.z;
-        playerMesh.rotation.y = Math.atan2(dx, dz);
-      }
+  // Auto-fire: shoot nearest zombie in range
+  if (!state.gameOver && playerMesh && state.zombies.length > 0) {
+    let nearest = null, nearestDist = Infinity;
+    for (const z of state.zombies) {
+      if (z.hp <= 0) continue;
+      const dx = z.mesh.position.x - playerMesh.position.x;
+      const dz = z.mesh.position.z - playerMesh.position.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d < nearestDist) { nearestDist = d; nearest = z; }
     }
-    shoot();
+    if (nearest && nearestDist < 30) {
+      const dx = nearest.mesh.position.x - playerMesh.position.x;
+      const dz = nearest.mesh.position.z - playerMesh.position.z;
+      playerMesh.rotation.y = Math.atan2(dx, dz);
+      shoot();
+    }
   }
 
   updatePlayer(dt);
