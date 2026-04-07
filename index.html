@@ -261,15 +261,15 @@ scene.add(dirLight);
 function createMap() {
   // Ground
   const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE);
-  const groundMat = new THREE.MeshLambertMaterial({ color: 0x2a3a2a });
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a6a4a });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(WORLD_SIZE / 2, -0.01, WORLD_SIZE / 2);
   scene.add(ground);
 
-  // Grass tufts
-  const grassColors = [0x2d5a1b, 0x3d7a2b, 0x4d8a3b, 0x5d9a4b, 0xff6b6b, 0xffffff];
-  for (let i = 0; i < 800; i++) {
+  // Grass tufts — brighter
+  const grassColors = [0x4d8a3b, 0x5d9a4b, 0x6daa5b, 0x7dba6b, 0xffd700, 0xff6b6b, 0xffffff];
+  for (let i = 0; i < 600; i++) {
     const x = Math.random() * WORLD_SIZE;
     const z = Math.random() * WORLD_SIZE;
     const h = 0.3 + Math.random() * 0.8;
@@ -298,7 +298,7 @@ function createPlayer() {
   group.add(rightLeg);
 
   const torsoGeo = new THREE.BoxGeometry(1.4, 1.6, 0.8);
-  const torsoMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const torsoMat = new THREE.MeshLambertMaterial({ color: 0xee3333 });
   const torso = new THREE.Mesh(torsoGeo, torsoMat);
   torso.position.y = 2.4;
   group.add(torso);
@@ -485,8 +485,8 @@ function createBullet(damage, spread = 0) {
   const pz = playerMesh.position.z;
   const bx = px + Math.sin(angle) * 1.8;
   const bz = pz + Math.cos(angle) * 1.8;
-  const geo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const geo = new THREE.BoxGeometry(0.25, 0.25, 1.0);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
   const bullet = new THREE.Mesh(geo, mat);
   bullet.position.set(bx, 1.5, bz);
   bullet.rotation.y = angle;
@@ -506,16 +506,27 @@ function spawnZombie() {
 
   const group = new THREE.Group();
   const bodyGeo = new THREE.BoxGeometry(0.8, 1.4, 0.5);
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
+  // Zombie — scary: dark body, glowing eyes
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2d4a2d });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   body.position.y = 0.9;
   group.add(body);
 
-  const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-  const headMat = new THREE.MeshLambertMaterial({ color: 0x8a5a5a });
+  const headGeo = new THREE.BoxGeometry(0.55, 0.55, 0.55);
+  const headMat = new THREE.MeshLambertMaterial({ color: 0x5a3a3a });
   const head = new THREE.Mesh(headGeo, headMat);
   head.position.y = 1.85;
   group.add(head);
+
+  // Glowing red eyes
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const eyeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.05);
+  const lEye = new THREE.Mesh(eyeGeo, eyeMat);
+  lEye.position.set(-0.15, 1.9, 0.28);
+  group.add(lEye);
+  const rEye = new THREE.Mesh(eyeGeo, eyeMat);
+  rEye.position.set(0.15, 1.9, 0.28);
+  group.add(rEye);
 
   const armGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
   const armMat = new THREE.MeshLambertMaterial({ color: 0x3a7a3a });
