@@ -174,7 +174,7 @@
   <button class="ctrl-btn" id="btn-reload" style="width:64px;font-size:11px">R REL</button>
 </div>
 
-<div id="joystick-zone">
+<div id="joystick-zone" style="opacity:0;pointer-events:none">
   <div id="joystick-base">
     <div id="joystick-thumb"></div>
   </div>
@@ -349,33 +349,56 @@ document.addEventListener('keyup', (e) => {
   if (k === 'd' || k === 'arrowright') state.keys.d = false;
 });
 
-// Touch joystick
-const joystickZone = document.getElementById('joystick-zone');
-const joystickThumb = document.getElementById('joystick-thumb');
+// Touch — full screen movement (left side = joystick, right side = weapon switch)
 const BASE_R = 40;
 let touchId = null;
 let joyX = 0, joyY = 0;
+let joystickCenter = { x: 80, y: window.innerHeight - 80 };
 
-joystickZone.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  touchId = e.changedTouches[0].identifier;
-  updateJoystick(e.changedTouches[0]);
-}, { passive: false });
-
-joystickZone.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  for (const t of e.changedTouches) {
-    if (t.identifier === touchId) { updateJoystick(t); break; }
+window.addEventListener('touchstart', (e) => {
+  const t = e.changedTouches[0];
+  if (t.clientX < window.innerWidth / 2 && touchId === null) {
+    touchId = t.identifier;
+    joystickCenter = { x: t.clientX, y: t.clientY };
+    joyX = 0; joyY = 0;
+    const thumb = document.getElementById('joystick-thumb');
+    thumb.style.transform = 'translate(-50%, -50%)';
+    thumb.style.left = '50%';
+    thumb.style.top = '50%';
   }
-}, { passive: false });
+}, { passive: true });
 
-joystickZone.addEventListener('touchend', (e) => {
+window.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchId && t.clientX < window.innerWidth / 2) {
+      const dx = t.clientX - joystickCenter.x;
+      const dy = t.clientY - joystickCenter.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > BASE_R) {
+        joyX = dx / dist;
+        joyY = dy / dist;
+      } else {
+        joyX = dx / BASE_R;
+        joyY = dy / BASE_R;
+      }
+      const thumb = document.getElementById('joystick-thumb');
+      const cx = Math.min(BASE_R, Math.max(-BASE_R, dx));
+      const cy = Math.min(BASE_R, Math.max(-BASE_R, dy));
+      thumb.style.left = `calc(50% + ${cx}px)`;
+      thumb.style.top = `calc(50% + ${cy}px)`;
+    }
+  }
+}, { passive: true });
+
+window.addEventListener('touchend', (e) => {
   for (const t of e.changedTouches) {
     if (t.identifier === touchId) {
       touchId = null;
       joyX = 0; joyY = 0;
-      joystickThumb.style.transform = 'translate(-50%, -50%)';
-      break;
+      const thumb = document.getElementById('joystick-thumb');
+      thumb.style.transform = 'translate(-50%, -50%)';
+      thumb.style.left = '50%';
+      thumb.style.top = '50%';
     }
   }
 });
@@ -627,7 +650,7 @@ function updatePlayer(dt) {
   if (state.keys.a) dx -= 1;
   if (state.keys.d) dx += 1;
 
-  if (Math.abs(joyX) > 0.1 || Math.abs(joyY) > 0.1) {
+  if (Math.abs(joyX) > 0.05 || Math.abs(joyY) > 0.05) {
     dx = joyX;
     dz = joyY;
   }
