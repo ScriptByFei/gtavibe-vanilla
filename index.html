@@ -65,33 +65,31 @@
 
     #joystick-zone {
       position: absolute;
-      bottom: 30px;
-      left: 30px;
-      width: 160px;
-      height: 160px;
+      bottom: 20px;
+      left: 20px;
+      width: 80px;
+      height: 80px;
       z-index: 10;
     }
 
     #joystick-base {
-      width: 160px;
-      height: 160px;
-      background: radial-gradient(circle, rgba(0,255,200,0.1) 0%, rgba(0,0,0,0.4) 100%);
-      border: 3px solid rgba(0,255,200,0.35);
+      width: 80px;
+      height: 80px;
+      background: rgba(0,0,0,0.35);
+      border: 2px solid rgba(0,255,200,0.25);
       border-radius: 50%;
       position: relative;
-      box-shadow: 0 0 20px rgba(0,255,200,0.15), inset 0 0 20px rgba(0,0,0,0.3);
     }
 
     #joystick-thumb {
-      width: 64px;
-      height: 64px;
-      background: radial-gradient(circle at 35% 35%, rgba(0,255,200,0.8) 0%, rgba(0,200,150,0.5) 100%);
+      width: 32px;
+      height: 32px;
+      background: rgba(0,255,200,0.45);
       border-radius: 50%;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 15px rgba(0,255,200,0.5);
     }
 
     #fire-btn {
@@ -164,9 +162,10 @@
 <body>
 
 <div id="hud">
-  <div>S <span id="hud-score" style="color:#ffdd00">0</span> W <span id="hud-wave" style="color:#0ff">1</span> K <span id="hud-kills" style="color:#f66">0</span></div>
-  <div>HP <span id="hud-health">100</span><span id="health-bar-bg"><span id="health-bar"></span></span></div>
-  <div><span id="hud-weapon" style="color:#ffdd00">PISTOL</span> <span id="hud-ammo-count">12</span> <span id="hud-reload" style="color:#f60;display:none">⟳</span></div>
+  <div><span style="color:#888">SCORE</span> <span id="hud-score" style="color:#ffdd00">0</span></div>
+  <div><span style="color:#888">WAVE</span> <span id="hud-wave" style="color:#0ff">1</span> &nbsp; <span style="color:#888">KILLS</span> <span id="hud-kills" style="color:#f66">0</span></div>
+  <div><span style="color:#888">HEALTH</span> <span id="hud-health">100</span><span id="health-bar-bg"><span id="health-bar"></span></span></div>
+  <div><span style="color:#888">GUN</span> <span id="hud-weapon" style="color:#ffdd00">PISTOL</span> &nbsp; <span id="hud-ammo-count">12</span> <span id="hud-reload" style="color:#f60;display:none">RELOAD</span></div>
 </div>
 
 <div id="weapon-controls">
@@ -353,7 +352,7 @@ document.addEventListener('keyup', (e) => {
 // Touch joystick
 const joystickZone = document.getElementById('joystick-zone');
 const joystickThumb = document.getElementById('joystick-thumb');
-const BASE_R = 80;
+const BASE_R = 40;
 let touchId = null;
 let joyX = 0, joyY = 0;
 
@@ -672,7 +671,7 @@ function animate() {
       const d = Math.sqrt(dx * dx + dz * dz);
       if (d < nearestDist) { nearestDist = d; nearest = z; }
     }
-    if (nearest && nearestDist < 30) {
+    if (nearest && nearestDist < 15) {
       const dx = nearest.mesh.position.x - playerMesh.position.x;
       const dz = nearest.mesh.position.z - playerMesh.position.z;
       playerMesh.rotation.y = Math.atan2(dx, dz);
