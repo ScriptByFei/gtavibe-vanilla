@@ -1,30 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>GTAVIBE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #0c1a0c;
+      --surface: rgba(8, 16, 24, 0.82);
+      --surface-2: rgba(12, 24, 36, 0.7);
+      --border: rgba(0, 210, 180, 0.18);
+      --border-bright: rgba(0, 210, 180, 0.45);
+      --c-hp: #ff3d3d;
+      --c-score: #ffe066;
+      --c-wanted: #ff6b6b;
+      --c-text: #e8f4f8;
+      --c-label: rgba(160, 200, 210, 0.55);
+      --font-mono: 'Space Mono', monospace;
+      --font-ui: 'Rajdhani', sans-serif;
+      --safe-bottom: env(safe-area-inset-bottom, 16px);
+      --safe-top: env(safe-area-inset-top, 16px);
+      --r-sm: 6px;
+      --r-md: 10px;
+      --r-lg: 16px;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
     canvas { display: block; }
 
     #hud {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      color: #fff;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      text-shadow: 1px 1px 2px #000;
+      top: calc(var(--safe-top) + 12px);
+      left: calc(var(--safe-top) + 12px);
       pointer-events: none;
-      line-height: 1.6;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 14px 16px;
+      min-width: 160px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .hud-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .hud-row:last-child { margin-bottom: 0; }
+
+    .hud-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--c-label);
+      width: 48px;
+      flex-shrink: 0;
+    }
+
+    .hud-val {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--c-text);
+    }
+    .hud-val--score { color: var(--c-score); }
+    .hud-val--hp    { color: var(--c-hp); }
+    .hud-val--wanted { color: var(--c-wanted); font-size: 13px; }
+
+    .bar-track {
+      width: 60px;
+      height: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    #health-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #ff2020, #ff6060);
+      border-radius: 3px;
+      box-shadow: 0 0 6px var(--c-hp);
+      transition: width 0.25s ease;
     }
 
     #controls {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
+      bottom: calc(var(--safe-bottom) + 20px);
+      right: calc(var(--safe-top) + 20px);
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -34,25 +96,33 @@
     .ctrl-btn {
       width: 48px;
       height: 48px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 8px;
+      background: var(--surface-2);
+      border: 2px solid var(--border-bright);
+      border-radius: var(--r-md);
       color: #fff;
-      font-size: 20px;
+      font-family: var(--font-ui);
+      font-size: 16px;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       user-select: none;
       -webkit-user-select: none;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
-
-    .ctrl-btn:active { background: rgba(255,255,255,0.35); }
+    .ctrl-btn:active {
+      transform: scale(0.95);
+      border-color: rgba(0,210,180,0.8);
+      box-shadow: 0 0 12px rgba(0,210,180,0.3);
+    }
 
     #joystick-zone {
       position: absolute;
-      bottom: 30px;
-      left: 30px;
+      bottom: calc(var(--safe-bottom) + 30px);
+      left: calc(var(--safe-top) + 30px);
       width: 120px;
       height: 120px;
       z-index: 10;
@@ -70,19 +140,20 @@
     #joystick-thumb {
       width: 50px;
       height: 50px;
-      background: rgba(255,255,255,0.4);
+      background: rgba(0,210,180,0.5);
       border-radius: 50%;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       transition: none;
+      box-shadow: 0 0 12px rgba(0,210,180,0.4);
     }
 
     #zoom-controls {
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: calc(var(--safe-top) + 12px);
+      right: calc(var(--safe-top) + 12px);
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -92,39 +163,60 @@
     .zoom-btn {
       width: 40px;
       height: 40px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
       color: #fff;
       font-size: 22px;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
-
-    .zoom-btn:active { background: rgba(255,255,255,0.35); }
+    .zoom-btn:active {
+      transform: scale(0.95);
+      border-color: var(--border-bright);
+    }
 
     #error {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: #ff6b6b;
-      font-family: monospace;
+      color: var(--c-hp);
+      font-family: var(--font-mono);
       font-size: 16px;
       text-align: center;
       display: none;
+      text-shadow: 0 0 10px var(--c-hp);
     }
+  </style>
+
   </style>
 </head>
 <body>
 
 <div id="hud">
-  <div>Score: <span id="hud-cash">0</span></div>
-  <div>HEALTH: <span id="hud-health">100</span></div>
-  <div>WANTED: <span id="hud-wanted">0</span></div>
+  <div class="hud-row">
+    <span class="hud-label">Score</span>
+    <span class="hud-val hud-val--score" id="hud-cash">0</span>
+  </div>
+  <div class="hud-row">
+    <span class="hud-label">HP</span>
+    <span class="hud-val hud-val--hp" id="hud-health">100</span>
+    <div class="bar-track"><div id="health-bar"></div></div>
+  </div>
+  <div class="hud-row">
+    <span class="hud-label">Stars</span>
+    <span class="hud-val hud-val--wanted" id="hud-wanted">0</span>
+  </div>
 </div>
+
+<div id="zoom-controls">
 
 <div id="zoom-controls">
   <button class="zoom-btn" id="zoom-in">+</button>
@@ -494,6 +586,7 @@ window.addEventListener('resize', () => {
 
 // ─── HUD ──────────────────────────────────────────────────────────────────
 function updateHUD() {
+  document.getElementById('health-bar').style.width = Math.max(0, state.health) + '%';
   document.getElementById('hud-cash').textContent = state.cash;
   document.getElementById('hud-health').textContent = state.health;
   document.getElementById('hud-wanted').textContent = '★'.repeat(state.wantedLevel);
